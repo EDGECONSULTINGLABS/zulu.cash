@@ -1,0 +1,31 @@
+{
+  "network": "zcash-testnet",
+  "watch_only": true,
+  "ivk": "zxviews1qexampleincomingviewingkeyxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "addresses": [
+    {
+      "label": "merchant_cafe01",
+      "type": "shielded",
+      "address": "zs1examplemerchantaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "label": "user_wallet_1",
+      "type": "shielded",
+      "address": "zs1exampleuseraddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ],
+  "notes": [
+    {
+      "txid": "txid_example_1",
+      "amount_zats": 97000000,
+      "timestamp": 1731715200,
+      "memo": "Coffee + pastry at Cafe01"
+    },
+    {
+      "txid": "txid_example_2",
+      "amount_zats": 245000000,
+      "timestamp": 1731801600,
+      "memo": "Coworking day pass"
+    }
+  ]
+}

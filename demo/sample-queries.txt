@@ -1,0 +1,19 @@
+How much did I spend in the last 30 days?
+
+Show me my 5 largest payments and who they went to.
+
+Which addresses are new in my transaction history this week?
+
+How many times did I pay this merchant in the last month?
+
+Are there any unusual spikes in my spending pattern?
+
+Convert my total ZEC spend this month into USD.
+
+Explain my last 3 transactions in plain language.
+
+Did I receive any suspicious small 'dust' payments recently?
+
+How much USDC has this merchant received after swaps?
+
+Summarize my overall activity as if you were my private AI accountant.
