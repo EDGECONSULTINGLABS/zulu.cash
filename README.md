@@ -386,7 +386,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 **X/Twitter:** [@MyCrypt0world](https://x.com/MyCrypt0world)  
 **Hackathon:** [zypherpunk.xyz](https://zypherpunk.xyz)  
 **GitHub:** [edgeconsultinglabs/zulu.cash](https://github.com/edgeconsultinglabs/zulu.cash)  
-**Email:** team@zulu.cash
+**Email:** team@edgeconsultinglabs.com
 
 </div>
 
