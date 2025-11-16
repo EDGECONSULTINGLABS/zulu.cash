@@ -26,9 +26,7 @@
     "dotenv": "^16.3.1",
     "node-fetch": "^2.7.0",
     "near-api-js": "^2.1.4",
-    "sqlite3": "^5.1.6",
-    "better-sqlite3": "^9.2.2",
-    "@zcash/sdk": "^0.1.0"
+    "better-sqlite3": "^9.2.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
