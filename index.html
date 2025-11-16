@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZULU.CASH — Private AI Agent for Zcash Commerce</title>
+    <meta name="description" content="The world's first private AI agent for Zcash. Local-first intelligence. Shielded payments. Zero surveillance.">
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/zulu-favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/zulu-favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/zulu-favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/zulu-favicon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/zulu-favicon-192.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#F4B728">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --zcash-gold: #F4B728;
+            --cyber-purple: #A855F7;
+            --dark-bg: #0a0a0f;
+            --darker-bg: #050508;
+            --text-primary: #E5E7EB;
+            --text-secondary: #9CA3AF;
+            --accent-cyan: #06B6D4;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background grid */
+        .grid-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(244, 183, 40, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(244, 183, 40, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            animation: gridScroll 20s linear infinite;
+        }
+
+        @keyframes gridScroll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
+        }
+
+        /* Gradient orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--zcash-gold), transparent);
+            top: -200px;
+            right: -200px;
+            animation: float 15s ease-in-out infinite;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--cyber-purple), transparent);
+            bottom: -150px;
+            left: -150px;
+            animation: float 20s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(50px, 50px); }
+        }
+
+        /* Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            padding: 32px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--zcash-gold), var(--cyber-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .status-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 6px 12px;
+            border: 1px solid var(--zcash-gold);
+            border-radius: 4px;
+            color: var(--zcash-gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Hero */
+        .hero {
+            padding: 120px 0 80px;
+            text-align: center;
+        }
+
+        .hero-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--zcash-gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 24px;
+            display: inline-block;
+        }
+
+        h1 {
+            font-size: clamp(48px, 8vw, 96px);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--text-primary), var(--zcash-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: clamp(20px, 3vw, 32px);
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.4;
+        }
+
+        /* Feature Grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin: 80px 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(244, 183, 40, 0.2);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-card:hover {
+            border-color: var(--zcash-gold);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(244, 183, 40, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--zcash-gold);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            padding: 80px 0 120px;
+        }
+
+        .cta-section h2 {
+            font-size: clamp(32px, 5vw, 56px);
+            margin-bottom: 24px;
+        }
+
+        .cta-section p {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--zcash-gold), #e09d1a);
+            color: var(--darker-bg);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(244, 183, 40, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--zcash-gold);
+            color: var(--zcash-gold);
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin: 80px 0;
+            text-align: center;
+        }
+
+        .stat h4 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--zcash-gold), var(--cyber-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .stat p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid rgba(244, 183, 40, 0.1);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--zcash-gold);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .hero {
+                padding: 80px 0 60px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        /* Terminal effect */
+        .terminal-text {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--zcash-gold);
+            font-size: 14px;
+        }
+
+        .blink {
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="grid-background"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">ZULU.CASH</div>
+            <div class="status-badge">● Building at Zypherpunk</div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-tag">The Private AI Agent for Zcash</div>
+            <h1>Intelligence<br>Without<br>Surveillance</h1>
+            <p class="subtitle">
+                Local-first AI. Shielded payments. Zero-knowledge commerce.<br>
+                The first AI agent that never leaks your financial data.
+            </p>
+            <div class="button-group">
+                <a href="#" class="btn btn-primary">Join Waitlist</a>
+                <a href="https://github.com/edgeconsultinglabs" class="btn btn-secondary">View on GitHub</a>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="stats">
+            <div class="stat">
+                <h4>100%</h4>
+                <p>Local Processing</p>
+            </div>
+            <div class="stat">
+                <h4>$0.02</h4>
+                <p>Avg Transaction Cost</p>
+            </div>
+            <div class="stat">
+                <h4>0%</h4>
+                <p>Data Leakage</p>
+            </div>
+            <div class="stat">
+                <h4>∞</h4>
+                <p>Privacy by Default</p>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3>Local AI Intelligence</h3>
+                <p>Your personal AI accountant runs entirely on your device. Natural language queries. Private insights. No cloud. No surveillance.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Shielded Payments</h3>
+                <p>Accept ZEC privately with USD-stable pricing. Merchants get instant settlement, users get zero-knowledge privacy.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Settlement</h3>
+                <p>Near-zero fees. No chargebacks. No 1-2 day ACH delays. Private commerce at the speed of trust.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Safe-Send Protection</h3>
+                <p>AI-powered transaction checks. Detect suspicious patterns. Protect against dust attacks. All computed locally.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💼</div>
+                <h3>Merchant Tools</h3>
+                <p>Private POS terminal. QR code generation. Automatic bookkeeping. Everything a business needs without the surveillance.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Encrypted Everything</h3>
+                <p>Watch-only keys. Encrypted local ledger. No private key exposure. Your custody, your control.</p>
+            </div>
+        </section>
+
+        <!-- Terminal Section -->
+        <section class="cta-section">
+            <div class="terminal-text" style="margin-bottom: 40px;">
+                > zulu.ai --query "How much did I spend this month?"<br>
+                <span style="color: var(--cyber-purple);">◆ Analyzing encrypted ledger...</span><br>
+                <span style="color: var(--text-primary);">Total spend: 2.4 ZEC ($743.21 USD)</span><br>
+                <span style="color: var(--text-secondary);">● All data stayed on your device<span class="blink">_</span></span>
+            </div>
+
+            <h2>Build the Machinery of Freedom</h2>
+            <p>ZULU is coming. Privacy-first. AI-powered. Merchant-ready.</p>
+            
+            <div class="button-group">
+                <a href="/cdn-cgi/l/email-protection#2d59484c406d48494a484e42435e58415944434a414c4f5e034e4240" class="btn btn-primary">Get Early Access</a>
+                <a href="https://zypherpunk.xyz" class="btn btn-secondary">Learn About Zypherpunk</a>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="footer-links">
+                <a href="https://edgeconsultinglabs.com">EdgePay</a>
+                <a href="https://twitter.com/edgeconsultinglabs">Twitter</a>
+                <a href="https://github.com/edgeconsultinglabs">GitHub</a>
+                <a href="/cdn-cgi/l/email-protection#96e2f3f7fbd6f3f2f1f3f5f9f8e5e3fae2fff8f1faf7f4e5b8f5f9fb">Contact</a>
+            </div>
+            <p>ZULU by EdgePay · Built for <a href="https://zypherpunk.xyz" style="color: var(--zcash-gold); text-decoration: none;">Zypherpunk Hackathon</a></p>
+            <p style="margin-top: 8px; font-size: 12px;">Private AI. Shielded Commerce. Zero Surveillance.</p>
+        </footer>
+    </div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add parallax effect to orbs on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const orbs = document.querySelectorAll('.orb');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            orbs.forEach((orb, index) => {
+                const speed = (index + 1) * 20;
+                orb.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+            });
+        });
+
+        // Animate stats on scroll
+        const observerOptions = {
+            threshold: 0.5,
+            rootMargin: '0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '0';
+                    entry.target.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        entry.target.style.transition = 'all 0.6s ease';
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }, 100);
+     

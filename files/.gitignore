@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+data/
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.fleet/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.cache/
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AI models (too large for git)
+*.gguf
+*.bin
+models/
+
+# Keys and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+private/
+secrets/
+
+# Zcash wallet files
+wallet.dat
+wallet.dat.bak
+
+# NEAR credentials
+.near-credentials/
+*.keystore
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Demo data (if contains real keys)
+demo/real-wallet.json
+demo/production-*.json
