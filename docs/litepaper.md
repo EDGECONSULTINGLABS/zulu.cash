@@ -1,213 +1,198 @@
-# ZULU.cash Litepaper v0.3  
-**Private AI Agent for Zcash Shielded Payments & Cross-Chain Settlement**
+# ZULU.CASH – Private Agent OS for Zcash
 
 ---
 
-## 1. Abstract
+## Abstract
 
-ZULU is a private, local-first AI agent that lets users pay with **shielded ZEC** while merchants receive **USDC** – without surveillance, centralized custody, or cloud-hosted AI models.
+Zulu is an **on-device AI agent** that joins calls, creates private memory, and performs contextual reasoning **without sending data to the cloud**.
 
-Built during the **Zypherpunk Zcash Hackathon**, ZULU combines:
+It uses **Zcash shielded identities** for selective disclosure and **local encrypted storage** for all knowledge.
 
-- Zcash shielded transactions  
-- Local AI (Phi-3 Mini via Ollama)  
-- Encrypted on-device ledger (SQLCipher)  
-- Cross-chain ZEC → USDC settlement (via NEAR-based swap engine)  
-
-ZULU's core idea:  
-> **AI should understand your money without exposing your money.**
+Zulu is the **opposite of surveillance AI**.
 
 ---
 
-## 2. Motivation
+## 1. Problem: AI Is Becoming a Panopticon
 
-### 2.1 Problem: AI + Finance = Surveillance by Default
+Modern AI is built on:
+- **Centralization**
+- **User telemetry**
+- **Behavioral extraction**
 
-Modern AI systems rely on centralization:
-- Cloud models
-- Central data lakes
-- Continuous telemetry
+Call assistants like Otter, Fireflies, Rewind:
+- ❌ Farm transcripts
+- ❌ Store embeddings
+- ❌ Resell behavioral models
 
-If *those* systems sit between users and their money:
+**AI = SaaS identity honeypot.**
 
-- Every payment becomes training data  
-- Every account becomes a behavioral profile  
-- Every merchant becomes a dataset  
-
-This breaks the core values of **Zcash** and privacy-preserving finance.
-
-### 2.2 Opportunity: Private AI for Private Money
-
-Zcash already provides:
-- Shielded transactions  
-- Proven cryptography  
-- Strong privacy guarantees  
-
-ZULU adds:
-- Local understanding  
-- Natural language queries  
-- Merchant-grade UX  
-- Cross-chain settlement  
-
-Without:  
-- Cloud logs  
-- KYC for users  
-- Centralized data brokers  
+Zulu rejects that paradigm.
 
 ---
 
-## 3. High-Level Design
+## 2. ZULU Live: Private AI for Conversations
 
-ZULU has three main actors:
+Zulu runs **entirely on-device**.
 
-1. **User** – Pays in shielded ZEC from their own wallet  
-2. **ZULU Agent** – Local AI + encrypted ledger + detectors  
-3. **Merchant** – Accepts ZEC, settles in USDC
-
-### 3.1 Core Principles
-
-- **Local-first**: All AI logic runs on-device  
-- **View-only**: Only incoming viewing keys are ever used  
-- **Non-custodial**: ZULU never holds funds or keys  
-- **Composable**: Swap and onboarding happen via external protocols/partners  
-- **Transparent**: Source, architecture, and roadmap are public
+### Features
+✅ **Live speech → text**  
+✅ **Contextual summary**  
+✅ **Semantic memory**  
+✅ **Personalized insights**  
+✅ **Zero-cloud logging**
 
 ---
 
-## 4. ZEC → USDC Settlement Flow
+## 3. Zcash: Not Payments — Identity
 
-1. User scans a merchant invoice (QR with amount in USD)
-2. ZULU displays the equivalent ZEC amount
-3. User pays from their own Zcash wallet (shielded TX)
-4. ZULU detects the incoming shielded payment via view key
-5. Once confirmed, ZULU forwards ZEC to a **NEAR-based swap module**
-6. Smart contracts swap **ZEC → USDC**
-7. Merchant receives USDC in their settlement account
+Zcash shielded pools are **selective disclosure primitives**, not banking rails.
 
-**Key Separation:**
+Zulu uses:
+- **Shielded receivers = permission tokens**
+- **Viewing keys = narrow-scope audit**
+- **Self-custody = local-only memory**
 
-- ZULU = local agent, ledger, and detection  
-- NEAR = on-chain swap + routing  
-- Third-party (TBA) = optional regulated merchant onboarding  
+This architecture **eliminates SaaS accounts**.
 
 ---
 
-## 5. Architecture Overview
+## 4. Architecture
 
-### 5.1 Components
+### Local Device Layer
+- **Whisper.cpp**
+- **Ollama LLM**
+- **SQLCipher encrypted DB**
+- **Local embeddings**
 
-- **Local AI Engine**
-  - Phi-3 Mini via Ollama
-  - Runs entirely on user device
-  - Used for ledger Q&A, anomaly hints, human-readable summaries
+### Identity Layer (ZEC)
+- **Orchard Receiver** → "Access profile"
+- **Unified Address** → "Memory partition"
+- **Viewing keys** → "Selective audit"
 
-- **Encrypted Ledger**
-  - SQLCipher-backed DB
-  - Stores:
-    - ZEC transaction summaries
-    - Pricing snapshots
-    - Merchant invoices
-    - Swap results
-  - Always encrypted at rest
+**No sign-up.**  
+**No accounts.**  
+**No server.**
 
-- **Zcash Watchers**
-  - Connect to `lightwalletd`
-  - Subscribe using incoming viewing keys
-  - No spending keys imported
+### Vector Store
+Private embeddings stored in a **local index**.
 
-- **Swap Engine (Prototype)**
-  - Offloads ZEC → USDC conversion to NEAR contracts
-  - ZULU simply constructs and forwards transactions
-
-- **Future: Private Compute Layer (MPC / Nillion-like)**
-  - Privacy-preserving analytics on encrypted data
-  - Pattern detection, routing decisions, risk scores
-  - Without exposing raw user or merchant data
+### Knowledge Engine
+LLM performs **contextual reasoning** against previous entries.
 
 ---
 
-## 6. Privacy Model
+## 5. Privacy Guarantees
 
-### 6.1 What ZULU Sees
+- ✅ **No call uploads**
+- ✅ **No conversations to 3rd parties**
+- ✅ **No embeddings in shared servers**
+- ✅ **No multi-tenant inference**
+- ✅ **No analytics extraction**
 
-- Encrypted transaction metadata
-- Viewing-only information
-- Locally stored ledger features
+**You + your machine only.**
 
-### 6.2 What ZULU Never Sees
+---
 
-- Private spend keys  
-- Raw wallet seed phrases  
-- User PII or KYC data  
-- Merchant's bank login or custodial info  
+## 6. Use Cases
 
-### 6.3 Cloud Exposure
+### Personal AI Memory
+Your assistant remembers your conversations, tasks, and knowledge.  
+**Stored encrypted on device.**
 
-- No cloud inference  
-- No hosted LLMs  
-- No centralized logs  
-- No remote analytics  
+### Selective Sharing
+Share a bounded memory trace with:
+- Your accountant
+- Your business partner
+- Your doctor
 
-The only external calls are:
-- To `lightwalletd` for ZEC tx data
-- To NEAR RPC / swap contracts for settlement
-- (Future) To a regulated third-party onboarding provider for merchants (TBA)
+**You don't "sign in"**  
+**You "reveal a note"**
 
 ---
 
 ## 7. Roadmap
 
-### Phase 1 — Prototype (Hackathon)
-- Local AI (Phi-3 Mini)
-- Encrypted ledger
-- Basic watch-only detection
-- ZEC → USDC swap flow prototype
-- Public website and docs
+### Phase 1 — Core Agent (Current)
+- ✅ Local LLM (Ollama)
+- ✅ Encrypted memory (SQLCipher)
+- ✅ Zcash identity stubs
+- 🔄 Audio pipeline (Whisper.cpp)
+- 🔄 Vector store integration
 
-### Phase 2 — Merchant POS
-- Merchant invoice generator
-- QR-based payment requests
-- Real-time detection + status
-- Simple settlement dashboard
+### Phase 2 — Live Assistant
+- 🔄 Meeting join (Google Meet / Zoom)
+- 🔄 Real-time transcription
+- 🔄 Contextual note generation
+- 🔄 Private embedding storage
 
-### Phase 3 — Private Compute Layer
-- MPC-based analytics on encrypted data
-- Spending pattern clustering
-- Swap-routing recommendations
-- Private risk signals
+### Phase 3 — Selective Disclosure
+- 🔄 Orchard receiver integration
+- 🔄 Viewing key-based access
+- 🔄 Memory partition by identity
+- 🔄 Note-based sharing
 
-### Phase 4 — Merchant Onboarding (Third-Party Partner)
-- Optional business onboarding via regulated provider
-- USDC payout rails
-- Compliant reporting
-- ZULU remains non-custodial and local-first
+### Phase 4 — Advanced Privacy
+- 🔄 MPC integration (Nillion)
+- 🔄 FHE computation (Fhenix)
+- 🔄 ZK identity bridge (Mina)
 
 ---
 
-## 8. Status & Contributions
+## 8. Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **LLM** | Ollama (Phi-3, Llama-3.1, Mistral) |
+| **Memory** | Encrypted SQLite + private embeddings |
+| **Audio** | VAD → Whisper.cpp (offline) |
+| **Zcash** | Orchard Unified Address |
+| **Vector Store** | Local (FAISS / Qdrant local mode) |
+| **Frontend** | Electron + Tailwind |
+| **Servers** | None |
+
+---
+
+## 9. Why This Matters
+
+**Artificial Intelligence should be your ally — not your spy.**
+
+Your agent learns about you **privately**.  
+Your knowledge stays **local**.  
+Your identity is **shielded**.
+
+This is **beyond Web2 analytics**, beyond surveillance finance, beyond Panopticon AI.
+
+---
+
+## 10. Status & Contributions
 
 ZULU is under active development and built fully in public.
 
-- Code: https://github.com/edgeconsultinglabs/zulu  
-- Site: https://zulu.cash  
-- X/Twitter: https://x.com/MyCrypt0world  
+- **Code:** https://github.com/edgeconsultinglabs/zulu.cash  
+- **Site:** https://zulu.cash  
+- **X/Twitter:** https://x.com/MyCrypt0world  
 
 We welcome contributions from:
-- Zcash engineers  
-- NEAR smart contract developers  
-- Privacy & MPC researchers  
-- AI/LLM systems engineers  
-- UX & product designers  
+- 🔐 **Privacy engineers**  
+- 🤖 **ML devs**  
+- 🔬 **Cryptographers**  
+- 🏗️ **Zcash community members**  
+- 🧠 **Live agent researchers**  
+
+**PRs > hype.**
 
 ---
 
-## 9. Contact
+## 11. Contact
 
 **Founder:**  
 Alula Zeryihun  
 Edge Consulting Labs  
 
-- Email: `team@edgeconsultinglabs.com`  
-- X/Twitter: [@MyCrypt0world](https://x.com/MyCrypt0world)  
+- **Email:** `team@edgeconsultinglabs.com`  
+- **X/Twitter:** [@MyCrypt0world](https://x.com/MyCrypt0world)  
 
-> If you're reading this, you're still early.
+---
+
+> **Intelligence Without Surveillance.**  
+> Built for the Zypherpunk Hackathon.

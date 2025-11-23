@@ -1,95 +1,264 @@
-# SECURITY POLICY — ZULU.cash
-
-ZULU is a **local-first, non-custodial** prototype under active development.  
-This document describes our current security model, assumptions, and how to report issues.
+# 🔐 SECURITY — ZULU Private Agent OS
 
 ---
 
-## 1. Security Model
+## Security Philosophy
 
-### 1.1 Non-Custodial Design
+ZULU is built on a **zero-trust, local-first** architecture.
 
-- ZULU **never** asks for or stores:
-  - Private spend keys
-  - Seed phrases
-  - Custodial balances
-- ZULU only requires **incoming viewing keys** (IVKs) for Zcash shielded addresses.
-
-### 1.2 Local-First Architecture
-
-- AI model runs locally via **Ollama** (e.g. Phi-3 Mini)
-- Ledger data is stored locally using **SQLCipher**-encrypted databases
-- No centralized inference server is used
-
-### 1.3 Limited External Dependencies
-
-ZULU uses external endpoints for:
-
-- `lightwalletd` — to fetch Zcash transaction data  
-- NEAR RPC — to interact with swap contracts  
-- Optional third-party merchant onboarding / payouts (TBA)  
-
-We **do not** operate or control these services and recommend users treat them as potential metadata exposure points.
+### Core Principle:
+> **Prevent ANY external party from reconstructing your cognitive data.**
 
 ---
 
-## 2. Threats We Aim to Mitigate
+## 🛡️ Security Model
 
-- Unauthorized access to local ledger data
-- Accidental leakage of transaction history to third-party APIs
-- Any requirement to share private keys with ZULU
-- Centralized logging of user financial behavior
+### Local-First
+- ✅ All computation happens on your device
+- ✅ No network sharing of user data
+- ✅ No cloud inference
+- ✅ No telemetry
+
+### Zero-Trust Architecture
+- ✅ Minimal external dependencies
+- ✅ No server-side storage
+- ✅ No multi-tenant databases
+- ✅ No shared infrastructure
+
+### Non-Custodial Operation
+- ✅ ZULU **never** holds user funds
+- ✅ ZULU **never** asks for private keys
+- ✅ ZULU only uses viewing keys for note scanning
+- ✅ Self-custody preserved at all times
+
+### Cryptographic Access Gates
+- ✅ Zcash shielded receivers as identity slots
+- ✅ Viewing keys for selective disclosure
+- ✅ Memory partitioning by receiver
+- ✅ No global memory leakage
 
 ---
 
-## 3. Threats Out of Scope (For Now)
+## 🎯 Adversary Model
 
-ZULU is an evolving prototype. The following are currently out of scope:
+### Threat Actors
+1. **Cloud telemetry miners** → Extract behavioral data from SaaS platforms
+2. **SaaS inference leakers** → Log and resell user prompts/responses
+3. **State-level forensic scraping** → Reconstruct cognitive profiles from metadata
 
-- Adversarial model attacks (prompt injection, model poisoning)
-- Side-channel attacks on device hardware
-- Compromised device / malware at OS level
-- Layer-1 protocol failures on Zcash or NEAR
-
-As the project matures, these areas may be revisited.
+### Attack Vectors We Mitigate
+- ✅ **Cloud upload interception** → No cloud uploads
+- ✅ **Multi-tenant data leakage** → No shared databases
+- ✅ **Behavioral profiling** → No telemetry
+- ✅ **API logging** → No external LLM APIs
+- ✅ **Metadata correlation** → Shielded identity isolation
 
 ---
 
-## 4. Reporting a Vulnerability
+## 🔒 Defense Layers
 
-If you believe you have found a security vulnerability in ZULU:
+| Layer | Defense Mechanism |
+|-------|-------------------|
+| **Network** | No cloud uploads, minimal external connections |
+| **Storage** | SQLCipher encryption at rest |
+| **Identity** | Zcash shielded receivers (Orchard) |
+| **Memory** | Partitioned by receiver, isolated shards |
+| **Inference** | Local-only (Ollama), no external APIs |
+| **Access Control** | Viewing keys for selective disclosure |
 
-1. **Do not open a public GitHub issue.**  
-2. Email a detailed report to:  
-   **`team@edgeconsultinglabs.com`**  
-3. Include:
+---
+
+## 🚫 What ZULU Never Does
+
+- ❌ **Never** asks for private keys
+- ❌ **Never** uploads transcripts to the cloud
+- ❌ **Never** sends data to external LLM APIs
+- ❌ **Never** stores data in multi-tenant databases
+- ❌ **Never** logs behavioral analytics
+- ❌ **Never** shares data with third parties
+- ❌ **Never** holds custody of user funds
+
+---
+
+## ✅ What ZULU Does
+
+### Encrypted Storage
+- All data stored in **SQLCipher**-encrypted database
+- Encryption key derived from user device
+- No cloud backup
+- No plaintext storage
+
+### Local Inference
+- All AI inference via **Ollama** (local)
+- No external LLM APIs
+- No prompt logging
+- No response telemetry
+
+### Minimal External Connections
+ZULU only connects to:
+- **lightwalletd** → For Zcash note scanning (optional)
+
+That's it. No other external services.
+
+### Identity Isolation
+- Each Zcash receiver = isolated memory shard
+- No linkability between receivers
+- Selective disclosure via viewing keys
+- No global identity
+
+---
+
+## 🔬 Current Security Status
+
+### ✅ Implemented
+- Local-first architecture
+- SQLCipher encrypted storage
+- Ollama local inference
+- Zcash receiver stubs
+
+### 🔄 In Progress
+- Whisper.cpp audio pipeline
+- Vector store encryption
+- Viewing key integration
+- Memory partitioning
+
+### 📅 Planned
+- MPC integration (Nillion)
+- FHE computation (Fhenix)
+- ZK identity proofs (Mina)
+- Security audit
+
+---
+
+## ⚠️ Known Limitations
+
+ZULU is an **evolving prototype**. Current limitations:
+
+### Threat Models Not Yet Addressed
+- **Adversarial model attacks** (prompt injection, model poisoning)
+- **Side-channel attacks** on device hardware
+- **Compromised device / malware** at OS level
+- **Physical access attacks** to device
+
+### Future Hardening
+As the project matures, we will address:
+- Secure enclave integration
+- Hardware-backed key storage
+- Attestation mechanisms
+- Formal security audit
+
+---
+
+## 📢 Reporting a Vulnerability
+
+If you discover a security vulnerability in ZULU:
+
+### DO:
+1. **Email immediately:** `team@edgeconsultinglabs.com`
+2. Include:
+   - Detailed description
    - Steps to reproduce
-   - Impact (what can an attacker do?)
-   - Any suggested remediation ideas
+   - Impact assessment
+   - Suggested remediation (if any)
 
-We will:
+### DO NOT:
+- ❌ Open a public GitHub issue
+- ❌ Disclose publicly before coordinated disclosure
+- ❌ Exploit the vulnerability
 
-- Acknowledge receipt within **5 business days**
-- Investigate and validate the issue
-- Coordinate fix & disclosure where appropriate
-
----
-
-## 5. Best Practices for Users
-
-Until ZULU is hardened and audited:
-
-- Treat it as an experimental tool, not a production wallet  
-- Do **not** import large-value wallets  
-- Use testnet where possible  
-- Only connect to trusted `lightwalletd` and NEAR RPC endpoints  
-- Keep your device OS and dependencies patched  
+### Our Response Timeline:
+- **< 5 business days** → Acknowledge receipt
+- **< 14 days** → Validate and assess
+- **< 30 days** → Fix and coordinate disclosure
 
 ---
 
-## 6. Disclaimer
+## 🛠️ Best Practices for Users
 
-ZULU is a work-in-progress prototype.  
-No guarantees are made regarding security, suitability for any particular purpose, or regulatory compliance.  
+### While ZULU is in Development:
 
-Use at your own risk.
+1. **Treat as experimental** → Not production-ready
+2. **Use testnet** → Don't connect mainnet wallets with large balances
+3. **Keep device secure** → Updated OS, strong passwords, disk encryption
+4. **Trusted endpoints only** → Only connect to trusted lightwalletd
+5. **Review code** → Open source, inspect before running
+
+---
+
+## 🔐 Privacy Guarantees
+
+| Feature | Guarantee |
+|---------|-----------|
+| **Cloud uploads** | ❌ Zero |
+| **Telemetry** | ❌ Zero |
+| **External APIs** | ❌ Zero (except lightwalletd) |
+| **Multi-tenant logs** | ❌ Zero |
+| **Behavioral profiling** | ❌ Zero |
+| **Data custody** | ✅ User-only |
+| **Encryption at rest** | ✅ Always (SQLCipher) |
+| **Local inference** | ✅ Always (Ollama) |
+
+---
+
+## 📜 Security Roadmap
+
+### Phase 1 — Foundation (Current)
+- ✅ Local-first architecture
+- ✅ Encrypted storage
+- ✅ No cloud dependencies
+
+### Phase 2 — Identity (Next)
+- 🔄 Zcash receiver integration
+- 🔄 Viewing key system
+- 🔄 Memory partitioning
+
+### Phase 3 — Advanced Privacy
+- 📅 MPC integration
+- 📅 FHE computation
+- 📅 ZK proofs
+
+### Phase 4 — Audit & Hardening
+- 📅 External security audit
+- 📅 Penetration testing
+- 📅 Formal verification (where applicable)
+
+---
+
+## 🎓 Security Resources
+
+### For Users
+- [Architecture](docs/architecture.md)
+- [FAQ](docs/faq.md)
+- [Roadmap](docs/roadmap.md)
+
+### For Developers
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Code of Conduct](CONTRIBUTING.md)
+
+### For Researchers
+- [Litepaper](docs/litepaper.md)
+- Threat model (this document)
+
+---
+
+## ⚖️ Disclaimer
+
+ZULU is a **work-in-progress prototype** developed for the Zypherpunk Hackathon.
+
+**No guarantees** are made regarding:
+- Security
+- Suitability for any particular purpose
+- Regulatory compliance
+- Production readiness
+
+**Use at your own risk.**
+
+---
+
+> **Intelligence Without Surveillance.**  
+> Built for the Zypherpunk Hackathon.
+
+---
+
+**Last Updated:** November 2024  
+**Version:** 2.0 (Private Agent OS)
