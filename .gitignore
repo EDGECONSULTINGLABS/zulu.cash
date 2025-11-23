@@ -33,7 +33,8 @@ out/
 *.db
 *.db-shm
 *.db-wal
-ledger/
+/storage/ledger.sqlcipher
+/storage/memory.sqlite
 
 # Misc
 .cache/

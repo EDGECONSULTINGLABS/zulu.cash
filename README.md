@@ -15,6 +15,12 @@
 
 ---
 
+## 💥 The Killer Line
+
+> **Zulu is a warrior who remembers your mind, not your wallet.**
+
+---
+
 Zulu is a **local-first AI agent** that learns about you privately.
 
 It runs on your device, uses shielded Zcash receivers as identity keys, and stores personal knowledge in encrypted memory — **never on a cloud**.
@@ -144,51 +150,44 @@ The intelligence is **yours**, not theirs.
 
 ```
 zulu.cash/
+├── agents/
+│   ├── live/              # Conversation memory (Whisper + LLM)
+│   ├── ledger/            # ZEC scanner (viewing keys only)
+│   └── signer/            # Optional cold wallet (future)
+│
+├── ui/
+│   ├── electron/          # Desktop app
+│   ├── tailwind/          # UI components
+│   └── nextjs/            # zulu.cash website
+│
+├── models/
+│   ├── prompts/           # Agent prompts (live, ledger, signer)
+│   ├── embeddings/        # Local vector store
+│   └── personalization/   # User preferences
+│
+├── storage/
+│   ├── ledger.sqlcipher   # ZEC transactions (encrypted)
+│   ├── memory.sqlite      # Conversations (encrypted)
+│   └── vault/             # Key storage (encrypted)
+│
 ├── docs/
-│   ├── README.md
 │   ├── litepaper.md
 │   ├── architecture.md
-│   ├── faq.md
-│   └── roadmap.md
-├── agent/
-│   ├── core/
-│   │   ├── context_manager.py
-│   │   ├── vector_store.py
-│   │   ├── memory_encryption.py
-│   │   └── zec_identity.py
-│   ├── live/
-│   │   ├── audio_pipeline.py
-│   │   ├── transcription_local.md
-│   │   └── analysis_private.md
-│   ├── ui/
-│   │   ├── electron/
-│   │   └── tailwind/
-│   └── models/
-│       ├── phi3-mini
-│       └── llama.cpp
-├── wallet/
-│   ├── zcash_lightwalletd.md
-│   ├── viewing_key_extractor.py
-│   ├── note_scanner.py
-│   ├── orchard_receiver.md
-│   └── selective_disclosure.md
-├── infra/
-│   ├── local_db/
-│   │   ├── schema.sql
-│   │   └── sqlcipher.md
-│   ├── nillion/
-│   │   ├── integration.md
-│   │   └── mpc_functions.py
-│   ├── fhenix/
-│   │   ├── fhe_compute.md
-│   │   └── encrypted_ops.py
-│   └── mina/
-│       ├── zk_identity_bridge.md
-│       └── zk_wallet_patterns.md
-├── LICENSE
-├── CONTRIBUTING.md
-└── SECURITY.md
+│   ├── threat-model.md
+│   └── build-log.md
+│
+└── scripts/
+    ├── whisper-local.py   # Offline transcription
+    ├── zcash-scan.ts      # Note scanner
+    └── ledger-export.ts   # Backup utility
 ```
+
+### 🎯 What This Shows Judges
+
+- ✅ **2-agent architecture** (live + ledger, extreme separation)
+- ✅ **Encrypted local state** (storage/ isolated)
+- ✅ **Zero SaaS dependencies** (all scripts local)
+- ✅ **Privacy by design** (vault/ for keys, no cloud)
 
 ---
 
