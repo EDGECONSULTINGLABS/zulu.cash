@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: zulu-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  zulu-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zulu-agent
+    depends_on:
+      - ollama
+    environment:
+      - ZULU_DB_KEY=${ZULU_DB_KEY}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - NILLION_API_KEY=${NILLION_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+    driver: local

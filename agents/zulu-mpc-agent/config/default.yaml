@@ -1,0 +1,84 @@
+# ZULU MPC Agent Configuration
+
+# Whisper Model Configuration
+whisper:
+  model_size: "medium"  # Options: tiny, base, small, medium, large-v2, large-v3
+  device: "auto"        # auto, cuda, cpu
+  compute_type: "auto"  # auto, float16, int8
+  model_dir: "./data/models/whisper"
+  language: "en"
+  beam_size: 5
+  vad_filter: true
+  vad_min_silence_ms: 500
+  temperature: 0.0
+
+# Diarization Configuration
+diarization:
+  enabled: true
+  backend: "pyannote"  # Options: pyannote, whisperx, simple
+  min_speakers: 1
+  max_speakers: 10
+  hf_token: null  # HuggingFace token for pyannote (if using)
+
+# Database Configuration
+database:
+  path: "./data/zulu_agent.db"
+  encryption_key_env: "ZULU_DB_KEY"  # Environment variable name
+  backup_enabled: true
+  backup_dir: "./data/backups"
+  backup_interval_hours: 24
+
+# Ollama Configuration
+ollama:
+  base_url: "http://localhost:11434"
+  model: "llama3.1:8b"  # or mistral, mixtral, etc.
+  temperature: 0.1
+  num_ctx: 8192
+  timeout: 120
+
+# Embedding Configuration
+embeddings:
+  model: "sentence-transformers/all-MiniLM-L6-v2"
+  device: "auto"
+  batch_size: 32
+  max_seq_length: 512
+
+# Nillion MPC Configuration
+nillion:
+  enabled: false  # Set to true when ready to use Nillion
+  network_url: "https://nillion-testnet.example.com"
+  api_key_env: "NILLION_API_KEY"
+  cluster_id: null
+  programs:
+    attention_score: "attention_score_v1"
+    pattern_detection: "pattern_detect_v1"
+  timeout: 60
+
+# Audio Processing
+audio:
+  sample_rate: 16000
+  format: "wav"
+  temp_dir: "./data/temp"
+  cleanup_after_processing: true
+
+# Privacy & Security
+privacy:
+  store_audio_files: false  # If false, audio deleted after processing
+  anonymize_speakers: true
+  pii_detection_enabled: true
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+# Feature Extraction
+features:
+  extract_embeddings: true
+  extract_attention_scores: true
+  extract_sentiment: false  # Future: sentiment analysis
+  extract_topics: true
+
+# Logging
+logging:
+  level: "INFO"
+  file: "./logs/zulu_agent.log"
+  max_size_mb: 100
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
