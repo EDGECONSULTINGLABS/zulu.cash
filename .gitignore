@@ -46,3 +46,6 @@ tmp/
 
 # Local files directory (not for git)
 files/
+
+# FFmpeg binaries (local dependency)
+ffmpeg-8.0.1/
