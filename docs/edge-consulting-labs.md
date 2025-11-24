@@ -4,8 +4,6 @@
 
 **Edge Consulting Labs** is a cutting-edge technology consultancy specializing in:
 
-- **Carbon Credit Tokenization** - Blockchain-based environmental asset tracking
-- **HydroCoin Project** - Sustainable cryptocurrency initiatives
 - **AI + Automation Lab** - Privacy-preserving AI systems
 - **Client Consulting** - Confidential advisory services
 
@@ -17,55 +15,7 @@
 
 ZULU's privacy-first architecture aligns perfectly with Edge Consulting Labs' mission:
 
-### 1. Carbon Credit Tokenization
-
-**Challenge**: Secure, auditable call recording for carbon credit verification
-
-**ZULU Solution**:
-- Encrypted meeting transcripts for audit trails
-- Action item tracking for compliance
-- Speaker diarization for stakeholder identification
-- Local storage (no cloud leakage)
-- Selective disclosure for regulators
-
-**Use Case**:
-```bash
-# Record carbon credit verification call
-zulu process verification-call.wav \
-  --title "Carbon Credit Audit - Project XYZ" \
-  --meta "auditor:Jane Doe,project:XYZ-2024"
-
-# Extract action items for compliance
-zulu show <session_id> --format json | jq '.action_items'
-```
-
----
-
-### 2. HydroCoin Project
-
-**Challenge**: Private stakeholder meetings with confidential decision tracking
-
-**ZULU Solution**:
-- End-to-end encrypted storage
-- Speaker anonymization (SPK_1, SPK_2)
-- Decision extraction and tracking
-- No cloud dependencies
-- MPC-based analytics (optional)
-
-**Use Case**:
-```bash
-# Process stakeholder meeting
-zulu process stakeholder-meeting.wav \
-  --title "HydroCoin Q4 Strategy" \
-  --language en
-
-# Review decisions made
-zulu show <session_id> --decisions
-```
-
----
-
-### 3. Client Consulting
+### 1. Client Consulting
 
 **Challenge**: Confidential client discussions requiring absolute privacy
 
@@ -89,7 +39,7 @@ zulu show <session_id> --summary > client-summary.txt
 
 ---
 
-### 4. AI + Automation Lab
+### 2. AI + Automation Lab
 
 **Challenge**: Showcase cutting-edge privacy-preserving AI to community
 
@@ -168,8 +118,6 @@ docker-compose up -d
 
 ### Phase 2: Production (Q1 2025)
 - [ ] Integrate with ECL CRM
-- [ ] Custom prompts for carbon credits
-- [ ] HydroCoin-specific features
 - [ ] Client portal integration
 
 ### Phase 3: Scale (Q2 2025)

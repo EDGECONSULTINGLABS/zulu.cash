@@ -95,16 +95,6 @@ The MPC Agent includes comprehensive documentation:
 
 Perfect for Edge Consulting Labs projects:
 
-### Carbon Credit Tokenization
-- Secure call recording for audits
-- Encrypted meeting transcripts
-- Action item tracking for compliance
-
-### HydroCoin Project
-- Private stakeholder meetings
-- Decision tracking
-- Confidential discussion storage
-
 ### Client Consulting
 - Confidential client calls
 - Automated meeting summaries
