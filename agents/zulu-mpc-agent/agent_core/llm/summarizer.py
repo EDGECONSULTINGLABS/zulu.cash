@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from agent_core.inference.diarization import DiarizedSegment
 from agent_core.llm.ollama_client import OllamaClient

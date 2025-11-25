@@ -6,16 +6,10 @@ whisper:
   device: "auto"        # auto, cuda, cpu
   compute_type: "auto"  # auto, float16, int8
   model_dir: "./data/models/whisper"
-  language: "en"
-  beam_size: 5
-  vad_filter: true
-  vad_min_silence_ms: 500
-  temperature: 0.0
 
 # Diarization Configuration
 diarization:
-  enabled: true
-  backend: "pyannote"  # Options: pyannote, whisperx, simple
+  backend: "simple"  # Options: pyannote, whisperx, simple
   min_speakers: 1
   max_speakers: 10
   hf_token: null  # HuggingFace token for pyannote (if using)
@@ -31,14 +25,14 @@ database:
 # Ollama Configuration
 ollama:
   base_url: "http://localhost:11434"
-  model: "llama3.1:8b"  # or mistral, mixtral, etc.
+  model: "phi3:latest"  # or llama3.1:8b, mistral, mixtral, etc.
   temperature: 0.1
   num_ctx: 8192
   timeout: 120
 
 # Embedding Configuration
 embeddings:
-  model: "sentence-transformers/all-MiniLM-L6-v2"
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
   device: "auto"
   batch_size: 32
   max_seq_length: 512

@@ -15,16 +15,10 @@ class WhisperConfig(BaseModel):
     device: str = "auto"
     compute_type: str = "auto"
     model_dir: str = "./data/models/whisper"
-    language: str = "en"
-    beam_size: int = 5
-    vad_filter: bool = True
-    vad_min_silence_ms: int = 500
-    temperature: float = 0.0
 
 
 class DiarizationConfig(BaseModel):
     """Diarization configuration."""
-    enabled: bool = True
     backend: str = "simple"  # pyannote, whisperx, simple
     min_speakers: int = 1
     max_speakers: int = 10
@@ -51,7 +45,7 @@ class OllamaConfig(BaseModel):
 
 class EmbeddingsConfig(BaseModel):
     """Embeddings model configuration."""
-    model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     device: str = "auto"
     batch_size: int = 32
     max_seq_length: int = 512

@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Read README
 readme_file = Path(__file__).parent / "README.md"
-long_description = readme_file.read_text() if readme_file.exists() else ""
+long_description = readme_file.read_text(encoding='utf-8') if readme_file.exists() else ""
 
 # Read requirements
 requirements_file = Path(__file__).parent / "requirements.txt"
@@ -13,7 +13,7 @@ requirements = []
 if requirements_file.exists():
     requirements = [
         line.strip()
-        for line in requirements_file.read_text().split('\n')
+        for line in requirements_file.read_text(encoding='utf-8').split('\n')
         if line.strip() and not line.startswith('#')
     ]
 

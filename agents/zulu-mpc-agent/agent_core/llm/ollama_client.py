@@ -165,8 +165,8 @@ class OllamaClient(LoggerMixin):
             True if model exists.
         """
         try:
-            models = self.client.list()
-            model_names = [m['name'] for m in models.get('models', [])]
+            response = self.client.list()
+            model_names = [m.model for m in response.models]
             return self.model in model_names
         except Exception as e:
             self.logger.error(f"Failed to check model: {e}")
