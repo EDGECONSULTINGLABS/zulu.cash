@@ -133,7 +133,7 @@ class OllamaClient(LoggerMixin):
         temperature: Optional[float] = None,
     ) -> dict:
         """
-        Generate JSON response.
+        Generate JSON response with robust parsing.
         
         Args:
             prompt: User prompt.
@@ -150,12 +150,65 @@ class OllamaClient(LoggerMixin):
             format="json",
         )
         
+        # Try multiple parsing strategies
+        return self._parse_json_response(response)
+    
+    def _parse_json_response(self, response: str) -> dict:
+        """
+        Robust JSON parsing with multiple fallback strategies.
+        
+        Args:
+            response: Raw LLM response
+            
+        Returns:
+            Parsed JSON dict
+        """
+        import re
+        
+        # Strategy 1: Direct parse (clean JSON)
         try:
             return json.loads(response)
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse JSON response: {e}")
-            self.logger.debug(f"Raw response: {response}")
-            raise
+        except json.JSONDecodeError:
+            pass
+        
+        # Strategy 2: Strip whitespace and try again
+        try:
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        # Strategy 3: Extract JSON from markdown code blocks
+        json_match = re.search(r'```json\s*\n(.*?)\n```', response, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # Strategy 4: Extract JSON object from text (find first { to last })
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        # Strategy 5: Try to find JSON array
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        # All strategies failed
+        self.logger.error(f"Failed to parse JSON response with all strategies")
+        self.logger.error(f"Raw response (first 500 chars): {response[:500]}")
+        # Raise a more informative error
+        raise ValueError(
+            f"Could not extract valid JSON from Ollama response. "
+            f"Response preview: {response[:200]}..."
+        )
     
     def check_model(self) -> bool:
         """

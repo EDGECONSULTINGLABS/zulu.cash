@@ -1,12 +1,104 @@
 """Call summarization using local LLM (Ollama)."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from agent_core.inference.diarization import DiarizedSegment
 from agent_core.llm.ollama_client import OllamaClient
 from agent_core.utils import LoggerMixin
+
+
+def safe_json_extract(text: str) -> Optional[dict]:
+    """
+    Extracts JSON objects from messy LLM output.
+    Attempts multiple cleaning heuristics before giving up.
+    
+    Args:
+        text: Raw LLM response text
+        
+    Returns:
+        Parsed JSON dict or None if extraction fails
+    """
+    if not text:
+        return None
+    
+    # 1. Extract the JSON substring (greedy)
+    json_candidates = re.findall(r"\{.*\}", text, re.DOTALL)
+    
+    # If no complete JSON found, try to find partial and wrap it
+    if not json_candidates:
+        # Look for JSON-like content starting with keys
+        if '"summary"' in text or "'summary'" in text:
+            # Try to extract from first quote to end
+            start_idx = text.find('"summary"')
+            if start_idx == -1:
+                start_idx = text.find("'summary'")
+            if start_idx != -1:
+                # Wrap it in braces
+                raw = "{" + text[start_idx:] + "}"
+            else:
+                return None
+        else:
+            return None
+    else:
+        raw = json_candidates[0]
+
+    # 2. Cleanup: remove backticks & markdown artifacts
+    cleaned = (
+        raw.replace("```json", "")
+           .replace("```", "")
+           .strip()
+    )
+
+    # 3. Fix common LLM formatting mistakes
+    fixes = [
+        (r",\s*}", "}"),         # trailing commas
+        (r",\s*]", "]"),         # trailing commas in arrays
+        (r'["""]', '"'),         # smart quotes (using character class)
+    ]
+    for pattern, repl in fixes:
+        cleaned = re.sub(pattern, repl, cleaned)
+    
+    # Replace single quotes with double quotes (but be careful with contractions)
+    # Only replace single quotes that are not part of words
+    cleaned = re.sub(r"(?<!\w)'|'(?!\w)", '"', cleaned)
+
+    # 4. Try parse directly
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        pass
+
+    # 5. Try with newlines removed
+    try:
+        no_newlines = cleaned.replace("\n", " ").replace("\r", " ")
+        return json.loads(no_newlines)
+    except Exception:
+        pass
+
+    # 6. Try adding missing brackets
+    try:
+        return json.loads(cleaned + "}")
+    except Exception:
+        pass
+    
+    # 7. Try adding missing opening bracket
+    try:
+        return json.loads("{" + cleaned)
+    except Exception:
+        pass
+    
+    # 8. Try fixing multiline strings
+    try:
+        # Replace literal newlines inside strings with \n
+        fixed = re.sub(r':\s*"([^"]*?)\n([^"]*?)"', r': "\1 \2"', cleaned, flags=re.DOTALL)
+        return json.loads(fixed)
+    except Exception:
+        pass
+
+    return None
 
 
 class CallSummarizer(LoggerMixin):
@@ -48,48 +140,40 @@ class CallSummarizer(LoggerMixin):
     
     def _get_default_prompt(self) -> str:
         """Get default prompt template."""
-        return """You are ZULU, a private local-first AI agent that analyzes call transcripts.
+        # Using PLACEHOLDER for utterances, will replace manually to avoid .format() issues with JSON
+        return """You are ZULU, a privacy-first AI that analyzes call transcripts.
 
-You receive a list of utterances from a call with fields:
-- speaker: Speaker label (e.g., SPK_1, SPK_2)
-- start_time: Start timestamp in seconds
-- end_time: End timestamp in seconds
-- text: What was said
+TRANSCRIPT:
+UTTERANCES_PLACEHOLDER
 
-Your goals:
-1. Provide a concise summary of the call (2-3 paragraphs max)
-2. Extract decisions, action items, and deadlines
-3. Identify any risks or concerns mentioned
-4. Keep privacy: do NOT infer or guess real names, companies, or identities
-5. Output ONLY valid JSON with no additional text
+INSTRUCTIONS:
+Analyze the transcript and output a JSON summary. Focus on:
+- Main discussion topics and outcomes
+- Action items and decisions
+- Any concerns or risks mentioned
+- Overall sentiment
 
-Output format (JSON only, no markdown):
+PRIVACY: Use only speaker labels (SPEAKER_00, etc). Do NOT guess real names or companies.
+
+OUTPUT FORMAT - Return ONLY valid JSON. Start with { and end with }. No extra text before or after.
 {
-  "summary": "Brief summary of the call discussion",
-  "key_points": ["Point 1", "Point 2", "Point 3"],
+  "summary": "2-3 sentence summary of the call",
+  "key_points": ["point 1", "point 2", "point 3"],
   "action_items": [
-    {
-      "owner": "SPK_1",
-      "item": "Task description",
-      "due": "2024-01-15 or null"
-    }
+    {"owner": "SPEAKER_00", "item": "task description", "due": null}
   ],
-  "decisions": [
-    "Decision 1",
-    "Decision 2"
-  ],
-  "risks": [
-    "Risk 1",
-    "Risk 2"
-  ],
+  "decisions": ["decision 1", "decision 2"],
+  "risks": ["risk 1 if any"],
   "topics": ["topic1", "topic2"],
-  "sentiment": "positive|neutral|negative"
+  "sentiment": "positive"
 }
 
-Utterances:
-{utterances}
-
-Remember: Output ONLY the JSON object, nothing else."""
+CRITICAL RULES:
+1. Output must START with { and END with }
+2. No markdown formatting (no ```json or ```)
+3. No explanatory text before or after the JSON
+4. Use double quotes for all strings
+5. Ensure all JSON is valid and complete"""
     
     def summarize_call(
         self,
@@ -111,25 +195,63 @@ Remember: Output ONLY the JSON object, nothing else."""
         # Format utterances for prompt
         utterances_text = self._format_utterances(segments)
         
-        # Build prompt
-        prompt = self.prompt_template.format(utterances=utterances_text)
+        # Build prompt (using replace to avoid .format() issues with JSON braces)
+        prompt = self.prompt_template.replace("UTTERANCES_PLACEHOLDER", utterances_text)
+        # Fallback for old format-style templates
+        if "UTTERANCES_PLACEHOLDER" not in self.prompt_template:
+            prompt = self.prompt_template.replace("{utterances}", utterances_text)
         
-        # Generate summary
+        # Generate summary with bulletproof JSON parsing
         try:
-            response = self.client.generate_json(
+            # Generate response (not using format="json" due to Ollama issues)
+            print("  -> Waiting for LLM (this may take 10-30 seconds)...")
+            import time
+            start_time = time.time()
+            
+            llm_response = self.client.generate(
                 prompt=prompt,
                 temperature=0.1,
             )
             
-            self.logger.info("Call summary generated successfully")
-            return response
+            elapsed = time.time() - start_time
+            print(f"  -> LLM responded in {elapsed:.1f}s")
             
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse summary JSON: {e}")
-            # Return basic fallback summary
-            return self._create_fallback_summary(segments)
+            # DEBUG: Show what we got
+            print(f"\n[DEBUG] LLM Response ({len(llm_response)} chars):")
+            print(f"{llm_response[:300]}")
+            print()
+            
+            # Use our enhanced JSON extractor
+            parsed = safe_json_extract(llm_response)
+            
+            if not parsed:
+                print(f"[!] Failed to extract JSON from LLM response")
+                print(f"[DEBUG] Full response:\n{llm_response}\n")
+                return self._create_fallback_summary(segments)
+            
+            if parsed and "summary" in parsed:
+                self.logger.info("✅ Call summary parsed successfully")
+                # Normalize keys (handle variations)
+                return {
+                    "summary": parsed.get("summary") or parsed.get("Summary", ""),
+                    "key_points": parsed.get("key_points") or parsed.get("KeyPoints", []),
+                    "action_items": parsed.get("action_items") or parsed.get("Actions", []),
+                    "decisions": parsed.get("decisions", []),
+                    "risks": parsed.get("risks", []),
+                    "topics": parsed.get("topics", []),
+                    "sentiment": parsed.get("sentiment", "neutral"),
+                }
+            else:
+                self.logger.warning("⚠️  LLM response didn't contain valid summary JSON")
+                if parsed:
+                    self.logger.warning(f"Parsed dict keys: {list(parsed.keys())}")
+                return self._create_fallback_summary(segments)
+            
         except Exception as e:
-            self.logger.error(f"Summarization failed: {e}")
+            self.logger.error(f"❌ Summarization failed: {e}")
+            self.logger.error(f"💡 Is Ollama running? Check: http://localhost:11434")
+            import traceback
+            self.logger.debug(f"Full traceback: {traceback.format_exc()}")
             return self._create_fallback_summary(segments)
     
     def _format_utterances(self, segments: List[DiarizedSegment]) -> str:
@@ -146,16 +268,24 @@ Remember: Output ONLY the JSON object, nothing else."""
         total_time = segments[-1].end if segments else 0
         speakers = list(set(seg.speaker for seg in segments))
         
+        # Extract first few sentences as key points
+        key_points = []
+        for seg in segments[:3]:  # First 3 turns
+            text = seg.text[:100]  # Truncate long texts
+            if text:
+                key_points.append(f"{seg.speaker}: {text}")
+        
         return {
-            "summary": f"Call with {len(speakers)} speakers, duration {total_time:.1f}s. "
-                      f"Automatic summarization unavailable.",
-            "key_points": [],
+            "summary": f"Recorded conversation with {len(speakers)} speaker(s), "
+                      f"{len(segments)} turns, duration {total_time:.1f}s. "
+                      f"Full transcript available in encrypted database.",
+            "key_points": key_points,
             "action_items": [],
             "decisions": [],
             "risks": [],
-            "topics": [],
+            "topics": ["conversation"],
             "sentiment": "neutral",
-            "error": "LLM summarization failed",
+            "note": "AI summarization unavailable - using basic transcript summary",
         }
 
 

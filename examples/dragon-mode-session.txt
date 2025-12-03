@@ -1,0 +1,157 @@
+
+ZULU Live WhisperX Agent - Dragon Mode
+============================================================
+
+[*] Initializing live agent...
+
+[*] Initializing ZULU Live WhisperX Agent...
+INFO     Loading embedding model: sentence-transformers/all-MiniLM-L6-v2 on cpu
+INFO     Embedding model loaded: dim=384, max_seq=512
+INFO     SessionStore initialized at ./data/zulu_agent.db
+INFO     Ollama client initialized: llama3.1:8b at http://localhost:11434
+INFO     CallSummarizer initialized
+INFO     Nillion client initialized: https://nillion-testnet.example.com (enabled=True)
+
+[OK] Nillion MPC client initialized
+[OK] ZULU Live Agent ready
+
+============================================================
+[*] ZULU LIVE - Privacy-First Meeting Assistant
+============================================================
+
+[*] How it works:
+  1. Recording from your microphone
+  2. Everything processed locally
+  3. Encrypted storage (SQLCipher)
+  4. Only embeddings to MPC (no text)
+
+[!] Press Ctrl+C when call ends
+
+============================================================
+
+[*] 🔴 RECORDING... (Press Ctrl+C to stop)
+
+[*] 🔴 Recording: 42s | Press Ctrl+C to stop
+
+[*] Stopping capture, flushing buffer...
+[*] Audio saved to: [TEMP_DIR]/tmpyvnsnokx.wav
+
+============================================================
+[*] Processing audio...
+============================================================
+
+[*] Loading WhisperX medium on cpu...
+INFO     Applied quirks: [allow_tf32, disable_jit_profiling]
+[*] Loading alignment model...
+[!] Diarization disabled (all speakers labeled as SPEAKER_00)
+[*] Running ASR...
+INFO - Detected language: en (1.00) in first 30s of audio
+[*] Aligning...
+[!] Skipping diarization (no HF_TOKEN)
+[OK] Processed 8 speaker turns
+
+[ID] Session ID: 0a21f953-4c0c-40cc-8e71-aa198e00b8d3
+
+============================================================
+[*] Storing encrypted memories...
+============================================================
+
+  [OK] Stored turn: SPEAKER_00 (1.4s)
+  [OK] Stored turn: SPEAKER_00 (10.4s)
+  [OK] Stored turn: SPEAKER_00 (3.3s)
+  [OK] Stored turn: SPEAKER_00 (3.7s)
+  [OK] Stored turn: SPEAKER_00 (3.2s)
+  [OK] Stored turn: SPEAKER_00 (1.1s)
+  [OK] Stored turn: SPEAKER_00 (4.6s)
+  [OK] Stored turn: SPEAKER_00 (4.1s)
+
+[OK] Stored 8 turns locally (encrypted)
+
+============================================================
+[MPC] Sending to Nillion MPC...
+============================================================
+  -> Only anonymized embeddings
+  -> No raw text transmitted
+  -> Privacy-preserving analytics
+
+INFO     Submitting batch to Nillion: session=0a21f953-4c0c-40cc-8e71-aa198e00b8d3, turns=8
+INFO     Batch queued: job_id=258816a5-2df8-4474-87fb-ae0293d5ea25
+  [OK] Job submitted: 258816a5-2df8-4474-87fb-ae0293d5ea25
+INFO     Fetching result for job: 258816a5-2df8-4474-87fb-ae0293d5ea25
+  [OK] Results retrieved
+  -> Engagement score: 0.74
+  -> Key moments: 3
+
+============================================================
+[*] Generating summary (local LLM)...
+============================================================
+
+[*] Calling LLM to generate summary...
+INFO     Summarizing call with 8 segments
+  -> Waiting for LLM (this may take 10-30 seconds)...
+  -> LLM responded in 69.3s
+
+[DEBUG] LLM Response (561 chars):
+```json
+{
+  "summary": "The conversation revolved around the limitations of AI and its inability to experience human emotions or sensations. The speaker discussed how AI relies on programming and theory, but lacks personal experiences like drinking water.",
+  "key_points": [
+    "AI's limitations in experiencing human emotions",
+    "Importance of understanding AI's capabilities and limitations"
+  ],
+  "action_items": [],
+  "decisions": [],
+  "risks": [],
+  "topics": ["AI", "human experience", "limitations"],
+  "sentiment": "neutral"
+}
+```
+
+INFO     ✅ Call summary parsed successfully
+[OK] ✅ Summary generated successfully
+
+============================================================
+[*] ZULU SESSION SUMMARY
+============================================================
+
+Session ID: 0a21f953-4c0c-40cc-8e71-aa198e00b8d3
+Duration: 42.3s
+Speakers: 1
+Turns: 8
+
+Speaker Breakdown:
+  SPEAKER_00: 8 turns, 31.8s
+
+------------------------------------------------------------
+[*] AI Summary:
+------------------------------------------------------------
+
+The conversation revolved around the limitations of AI and its inability to 
+experience human emotions or sensations. The speaker discussed how AI relies 
+on programming and theory, but lacks personal experiences like drinking water.
+
+[*] Key Points:
+  * AI's limitations in experiencing human emotions
+  * Importance of understanding AI's capabilities and limitations
+
+[*] Topics:
+  * AI
+  * human experience
+  * limitations
+
+[=] Sentiment: neutral
+
+============================================================
+
+[*] Audio file deleted: [TEMP_DIR]/tmpyvnsnokx.wav
+
+[OK] Processing complete!
+[*] All data encrypted and stored locally
+[MPC] MPC received only anonymized embeddings
+
+[OK] Session Complete
+Session ID: 0a21f953-4c0c-40cc-8e71-aa198e00b8d3
+Turns: 8
+Speakers: 1
+Duration: 42.3s
+[MPC] MPC: Enabled (only embeddings sent)

@@ -1,0 +1,29 @@
+# Additional dependencies for ZULU Live WhisperX Agent
+# Install with: pip install -r requirements-live.txt
+
+# WhisperX for advanced ASR + diarization
+# PINNED: v3.1.1 has stable DiarizationPipeline API
+# v3.7+ removed DiarizationPipeline (breaking change)
+whisperx==3.1.1
+
+# Audio capture
+sounddevice>=0.4.6
+soundfile>=0.12.1
+
+# Optional: PyTorch with CUDA support for GPU acceleration
+# Uncomment one of the following based on your CUDA version:
+
+# For CPU only (default):
+# torch>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
+# torchaudio>=2.0.0 --index-url https://download.pytorch.org/whl/cpu
+
+# For CUDA 11.8:
+# torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+# torchaudio>=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+
+# For CUDA 12.1:
+# torch>=2.0.0 --index-url https://download.pytorch.org/whl/cu121
+# torchaudio>=2.0.0 --index-url https://download.pytorch.org/whl/cu121
+
+# Note: HuggingFace token required for PyAnnote diarization
+# Set environment variable: export HF_TOKEN=your_token_here

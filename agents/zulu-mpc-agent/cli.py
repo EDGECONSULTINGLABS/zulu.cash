@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """Command-line interface for ZULU MPC Agent."""
 
+# CRITICAL: Set this FIRST, before ANY imports
+# PyTorch 2.6+ has weights_only=True by default which breaks PyAnnote models
+import os
+os.environ['TORCH_FORCE_WEIGHTS_ONLY_LOAD'] = '0'
+
 import json
 import sys
+import warnings
 from pathlib import Path
 from typing import Optional
+
+# Suppress pkg_resources deprecation warning from ctranslate2
+warnings.filterwarnings("ignore", category=UserWarning, module="ctranslate2")
 
 import click
 from rich.console import Console
@@ -13,8 +22,13 @@ from rich import print as rprint
 
 from agent_core import WhisperDiarizationAgent, load_config, setup_logging
 
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-console = Console()
+console = Console(force_terminal=True, legacy_windows=False)
 
 
 @click.group()
@@ -77,7 +91,7 @@ def process(ctx, audio_file: str, title: Optional[str], language: str):
         with console.status("[bold green]Processing call..."):
             session_id = agent.process_call(audio_file, meta)
         
-        console.print(f"\n[bold green]✓[/bold green] Success!")
+        console.print(f"\n[bold green][OK][/bold green] Success!")
         console.print(f"Session ID: [bold]{session_id}[/bold]\n")
         
         # Show summary
@@ -85,7 +99,7 @@ def process(ctx, audio_file: str, title: Optional[str], language: str):
         _display_session_summary(summary)
         
     except Exception as e:
-        console.print(f"\n[bold red]✗ Error:[/bold red] {e}\n")
+        console.print(f"\n[bold red][X] Error:[/bold red] {e}\n")
         sys.exit(1)
 
 
@@ -170,9 +184,9 @@ def delete(ctx, session_id: str, confirm: bool):
     
     try:
         agent.delete_session(session_id)
-        console.print(f"\n[green]✓[/green] Session deleted: {session_id}\n")
+        console.print(f"\n[green][OK][/green] Session deleted: {session_id}\n")
     except Exception as e:
-        console.print(f"\n[red]✗ Error:[/red] {e}\n")
+        console.print(f"\n[red][X] Error:[/red] {e}\n")
         sys.exit(1)
 
 
@@ -194,7 +208,7 @@ def health(ctx):
         if component == 'overall':
             continue
         
-        icon = "✓" if status else "✗"
+        icon = "[OK]" if status else "[X]"
         color = "green" if status else "red"
         console.print(f"  [{color}]{icon}[/{color}] {component.capitalize()}: [bold]{status}[/bold]")
     
@@ -222,7 +236,7 @@ def init():
     
     for dir_path in dirs:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
-        console.print(f"[green]✓[/green] Created: {dir_path}")
+        console.print(f"[green][OK][/green] Created: {dir_path}")
     
     # Check environment variables
     import os
@@ -239,14 +253,14 @@ def init():
     
     for var, desc in required_vars.items():
         if os.getenv(var):
-            console.print(f"  [green]✓[/green] {var}: Set")
+            console.print(f"  [green][OK][/green] {var}: Set")
         else:
-            console.print(f"  [red]✗[/red] {var}: Not set - {desc}")
+            console.print(f"  [red][X][/red] {var}: Not set - {desc}")
     
     console.print()
     for var, desc in optional_vars.items():
         if os.getenv(var):
-            console.print(f"  [green]✓[/green] {var}: Set")
+            console.print(f"  [green][OK][/green] {var}: Set")
         else:
             console.print(f"  [yellow]![/yellow] {var}: Not set - {desc}")
     
@@ -323,6 +337,70 @@ def _display_session_summary(summary: dict):
                     console.print(f"  • {kind}: {score:.4f}")
     
     console.print()
+
+
+@cli.command()
+@click.option('--model-size', '-m', default='medium', help='Whisper model size')
+@click.option('--no-mpc', is_flag=True, help='Disable Nillion MPC integration')
+@click.option('--keep-audio', is_flag=True, help='Keep audio file after processing')
+def live_whisperx(model_size: str, no_mpc: bool, keep_audio: bool):
+    """
+    Run ZULU as a live privacy-first meeting assistant.
+    
+    Features:
+    - Real-time audio capture from microphone
+    - WhisperX transcription + speaker diarization (local)
+    - Encrypted storage (SQLCipher)
+    - Optional Nillion MPC for privacy-preserving analytics
+    - Local LLM summarization
+    
+    Press Ctrl+C to stop recording and process the call.
+    """
+    console.print("\n[bold cyan]ZULU Live WhisperX Agent[/bold cyan]")
+    console.print("="*60 + "\n")
+    
+    try:
+        from live_whisperx_agent import ZuluLiveWhisperXMPC
+    except ImportError as e:
+        console.print("[bold red][X] Error:[/bold red] WhisperX dependencies not installed")
+        console.print("\nInstall with:")
+        console.print("  pip install whisperx sounddevice soundfile")
+        console.print(f"\nDetails: {e}\n")
+        sys.exit(1)
+    
+    try:
+        # Initialize agent
+        console.print("[*] Initializing live agent...\n")
+        agent = ZuluLiveWhisperXMPC(
+            model_size=model_size,
+            enable_mpc=not no_mpc,
+        )
+        
+        # Run live capture
+        result = agent.run(auto_delete_audio=not keep_audio)
+        
+        # Display result
+        if result['status'] == 'success':
+            console.print(f"\n[bold green][OK] Session Complete[/bold green]")
+            console.print(f"Session ID: [bold]{result['session_id']}[/bold]")
+            console.print(f"Turns: {result['turns']}")
+            console.print(f"Speakers: {result['speakers']}")
+            console.print(f"Duration: {result['duration']:.1f}s")
+            if result['mpc_enabled']:
+                console.print("[MPC] MPC: Enabled (only embeddings sent)")
+            console.print()
+        else:
+            console.print(f"\n[yellow]Status: {result['status']}[/yellow]\n")
+            
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Interrupted by user[/yellow]\n")
+        sys.exit(0)
+    except Exception as e:
+        console.print(f"\n[bold red][X] Error:[/bold red] {e}\n")
+        import traceback
+        if '--verbose' in sys.argv or '-v' in sys.argv:
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == '__main__':

@@ -292,6 +292,104 @@ class NillionClient(LoggerMixin):
         import random
         return random.uniform(0.5, 0.95)
     
+    def send_turn_batch(
+        self,
+        session_id: str,
+        turns: List[Dict[str, Any]],
+    ) -> str:
+        """
+        Submit a batch of speaker turns to Nillion for privacy-preserving analysis.
+        
+        Each turn contains:
+        - speaker: anonymized speaker ID (e.g., "SPEAKER_00")
+        - embedding: feature vector representation
+        - start: timestamp start
+        - end: timestamp end
+        
+        Only anonymized embeddings and metadata are sent - no raw text.
+        
+        Args:
+            session_id: Unique session identifier
+            turns: List of turn dictionaries with embeddings
+            
+        Returns:
+            Job ID for async result retrieval
+        """
+        if not self.enabled:
+            return self._mock_handle()
+        
+        self.logger.info(
+            f"Submitting batch to Nillion: session={session_id}, "
+            f"turns={len(turns)}"
+        )
+        
+        # TODO: Replace with actual Nillion SDK batch submission
+        # Example pseudo-code:
+        #
+        # handles = []
+        # for turn in turns:
+        #     handle = self.secret_share_vector(
+        #         vec=turn["embedding"],
+        #         name=f"{session_id}_{turn['speaker']}_{turn['start']}"
+        #     )
+        #     handles.append(handle)
+        #
+        # job = client.run_batch_program(
+        #     program_id=self.programs.get("conversation_analysis"),
+        #     inputs={"turn_handles": handles, "session_id": session_id},
+        #     cluster_id=self.cluster_id,
+        # )
+        #
+        # return job.job_id
+        
+        # Mock implementation
+        import uuid
+        job_id = str(uuid.uuid4())
+        self.logger.info(f"Batch queued: job_id={job_id}")
+        return job_id
+    
+    def fetch_job_result(self, job_id: str) -> Dict[str, Any]:
+        """
+        Retrieve results from a previously submitted MPC job.
+        
+        Args:
+            job_id: Job identifier from send_turn_batch
+            
+        Returns:
+            Analysis results (only aggregate stats, no raw data)
+        """
+        if not self.enabled:
+            return {"job_id": job_id, "status": "disabled"}
+        
+        self.logger.info(f"Fetching result for job: {job_id}")
+        
+        # TODO: Replace with actual Nillion SDK result retrieval
+        # Example pseudo-code:
+        #
+        # result = client.get_job_result(
+        #     job_id=job_id,
+        #     cluster_id=self.cluster_id,
+        # )
+        #
+        # return result.outputs
+        
+        # Mock result with privacy-preserving analytics
+        import random
+        return {
+            "job_id": job_id,
+            "status": "complete",
+            "attention_hotspots": [
+                {"timestamp": 45.2, "score": 0.87},
+                {"timestamp": 132.8, "score": 0.92},
+            ],
+            "speaker_dominance": {
+                "SPEAKER_00": 0.65,
+                "SPEAKER_01": 0.35,
+            },
+            "engagement_score": random.uniform(0.7, 0.95),
+            "key_moments": 3,
+        }
+    
     def get_config(self) -> Dict[str, Any]:
         """Get client configuration."""
         return {
