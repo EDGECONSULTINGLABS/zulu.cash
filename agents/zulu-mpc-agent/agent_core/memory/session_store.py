@@ -427,6 +427,165 @@ class SessionStore(LoggerMixin):
         finally:
             conn.close()
     
+    # ========== Episodic Memory Operations (Session-Level Summaries) ==========
+    
+    def ensure_episodic_memory_schema(self) -> None:
+        """
+        Add is_session_summary column to memories table if it doesn't exist.
+        Safe to call multiple times - will only add if missing.
+        """
+        conn = self._get_connection()
+        try:
+            # Check if column exists
+            cursor = conn.execute("PRAGMA table_info(memories)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'is_session_summary' not in columns:
+                self.logger.info("Adding is_session_summary column to memories table")
+                conn.execute(
+                    "ALTER TABLE memories ADD COLUMN is_session_summary INTEGER DEFAULT 0"
+                )
+                conn.commit()
+                self.logger.info("✅ Episodic memory schema updated")
+            else:
+                self.logger.debug("is_session_summary column already exists")
+        except Exception as e:
+            self.logger.warning(f"Schema update check failed: {e}")
+        finally:
+            conn.close()
+    
+    def store_session_summary(
+        self,
+        session_id: str,
+        summary_text: str,
+        embedding: bytes,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        """
+        Stores a high-level session summary as a top-level memory item.
+        This creates "episodic memory" - a single embedding representing the entire session.
+        
+        Args:
+            session_id: UUID for linking the summary to the call
+            summary_text: Full natural-language summary
+            embedding: Vector embedding (as bytes) for fast recall
+            metadata: Optional additional metadata (e.g., key_points, topics)
+        
+        Returns:
+            Row ID of inserted memory
+        """
+        # Ensure schema supports episodic memory
+        self.ensure_episodic_memory_schema()
+        
+        conn = self._get_connection()
+        try:
+            metadata_json = json.dumps(metadata) if metadata else None
+            
+            cursor = conn.execute(
+                """
+                INSERT INTO memories 
+                (session_id, speaker, text, embedding, is_session_summary, metadata_json)
+                VALUES (?, ?, ?, ?, 1, ?)
+                """,
+                (session_id, "SESSION_SUMMARY", summary_text, embedding, metadata_json),
+            )
+            conn.commit()
+            
+            self.logger.info(f"📝 Episodic memory stored for session {session_id[:8]}...")
+            return cursor.lastrowid
+        finally:
+            conn.close()
+    
+    def get_session_summaries(
+        self,
+        session_id: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve session-level summaries (episodic memories).
+        
+        Args:
+            session_id: Optional specific session ID
+            limit: Maximum number of summaries to return
+        
+        Returns:
+            List of session summary dicts with embeddings
+        """
+        conn = self._get_connection()
+        try:
+            if session_id:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM memories 
+                    WHERE session_id = ? AND is_session_summary = 1
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (session_id, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM memories 
+                    WHERE is_session_summary = 1
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (limit,),
+                )
+            
+            summaries = []
+            for row in cursor.fetchall():
+                summary = dict(row)
+                if summary.get('metadata_json'):
+                    summary['metadata'] = json.loads(summary['metadata_json'])
+                summaries.append(summary)
+            
+            return summaries
+        finally:
+            conn.close()
+    
+    def get_turn_memories(
+        self,
+        session_id: str,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get turn-level memories (not session summaries).
+        
+        Args:
+            session_id: Session ID to retrieve memories for
+            limit: Optional limit on number of turns
+        
+        Returns:
+            List of turn-level memory dicts
+        """
+        conn = self._get_connection()
+        try:
+            if limit:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM memories 
+                    WHERE session_id = ? AND (is_session_summary = 0 OR is_session_summary IS NULL)
+                    ORDER BY created_at
+                    LIMIT ?
+                    """,
+                    (session_id, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM memories 
+                    WHERE session_id = ? AND (is_session_summary = 0 OR is_session_summary IS NULL)
+                    ORDER BY created_at
+                    """,
+                    (session_id,),
+                )
+            
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+    
     # ========== Utility Operations ==========
     
     def delete_session(self, session_id: str) -> None:

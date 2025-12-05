@@ -267,6 +267,37 @@ class ZuluLiveWhisperXMPC:
                 print("[!] LLM summary unavailable - using basic fallback\n")
             else:
                 print("[OK] ✅ Summary generated successfully\n")
+            
+            # ========== EPISODIC MEMORY: Store session-level summary ==========
+            # Create embedding of the summary text for instant recall
+            summary_text = summary.get("summary", "")
+            if summary_text and len(summary_text) > 10:  # Only if we have meaningful summary
+                try:
+                    print("[*] Creating episodic memory (session-level embedding)...")
+                    summary_embedding = self.embedder.encode(summary_text)
+                    
+                    # Store as episodic memory with metadata
+                    # Convert any complex types to simple strings/numbers for JSON serialization
+                    episodic_metadata = {
+                        "key_points": [str(kp) for kp in summary.get("key_points", [])],
+                        "topics": [str(t) for t in summary.get("topics", [])],
+                        "sentiment": str(summary.get("sentiment", "neutral")),
+                        "action_items_count": len(summary.get("action_items", [])),
+                        "decisions_count": len(summary.get("decisions", [])),
+                    }
+                    
+                    self.session_store.store_session_summary(
+                        session_id=session_id,
+                        summary_text=summary_text,
+                        embedding=summary_embedding.tobytes(),
+                        metadata=episodic_metadata,
+                    )
+                    print("[OK] 📝 Episodic memory stored (1 embedding = entire session)")
+                except Exception as em_error:
+                    print(f"[!] Failed to store episodic memory: {em_error}")
+                    import traceback
+                    traceback.print_exc()
+                    # Non-critical error - continue
                 
         except Exception as e:
             print(f"\n[!] ❌ Summary generation exception: {e}")
@@ -324,8 +355,9 @@ class ZuluLiveWhisperXMPC:
             print()
         
         if summary.get('sentiment'):
-            sentiment_text = {"positive": "[+]", "neutral": "[=]", "negative": "[-]"}.get(summary['sentiment'], "[?]")
-            print(f"{sentiment_text} Sentiment: {summary['sentiment']}")
+            sentiment_value = str(summary.get('sentiment', 'neutral')).lower()
+            sentiment_text = {"positive": "[+]", "neutral": "[=]", "negative": "[-]"}.get(sentiment_value, "[?]")
+            print(f"{sentiment_text} Sentiment: {sentiment_value}")
             print()
         
         print("="*60 + "\n")
