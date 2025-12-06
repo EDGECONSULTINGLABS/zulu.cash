@@ -274,7 +274,7 @@ class ZuluLiveWhisperXMPC:
             if summary_text and len(summary_text) > 10:  # Only if we have meaningful summary
                 try:
                     print("[*] Creating episodic memory (session-level embedding)...")
-                    summary_embedding = self.embedder.encode(summary_text)
+                    summary_embedding = self.embedder.embed(summary_text)[0]  # embed() returns array, get first
                     
                     # Store as episodic memory with metadata
                     # Convert any complex types to simple strings/numbers for JSON serialization
