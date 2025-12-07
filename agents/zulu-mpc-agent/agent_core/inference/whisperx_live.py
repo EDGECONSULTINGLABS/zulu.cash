@@ -123,18 +123,7 @@ class WhisperXLive:
 
         # Combine all audio chunks
         audio_bytes = b"".join(list(self.q.queue))
-        
-        if not audio_bytes:
-            raise ValueError("No audio data captured. Check your microphone settings.")
-        
         audio_np = np.frombuffer(audio_bytes, dtype=np.int16)
-        
-        # Validate audio length (at least 0.5 seconds)
-        duration_seconds = len(audio_np) / AUDIO_RATE
-        if duration_seconds < 0.5:
-            raise ValueError(f"Recording too short: {duration_seconds:.1f}s. Need at least 0.5s.")
-        
-        print(f"[*] Captured {duration_seconds:.1f}s of audio")
 
         # Save to temporary WAV file
         tmp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -184,22 +173,9 @@ class WhisperXLive:
         """
         self._load_models()
 
-        # Verify audio file exists and is valid
-        if not os.path.exists(wav_path):
-            raise FileNotFoundError(f"Audio file not found: {wav_path}")
-        
-        file_size = os.path.getsize(wav_path)
-        if file_size < 1000:  # Less than 1KB is suspicious
-            raise ValueError(f"Audio file too small ({file_size} bytes). Check recording.")
-
         # Step 1: ASR (transcription)
         print("[*] Running ASR...")
-        try:
-            asr_result = self._asr_model.transcribe(wav_path)
-        except Exception as e:
-            print(f"[!] ASR failed: {e}")
-            print(f"[!] Audio file: {wav_path} ({file_size} bytes)")
-            raise
+        asr_result = self._asr_model.transcribe(wav_path)
 
         # Step 2: Alignment (word-level timestamps)
         print("[*] Aligning...")
