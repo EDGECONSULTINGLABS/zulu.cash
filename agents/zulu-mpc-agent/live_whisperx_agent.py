@@ -33,6 +33,9 @@ from agent_core.inference.embedder import EmbeddingModel
 from agent_core.memory.session_store import SessionStore
 from agent_core.llm.ollama_client import OllamaClient
 from agent_core.llm.summarizer import CallSummarizer
+from agent_core.llm.summarizer_v2 import ZuluSummarizer, SummarizerConfig
+from agent_core.llm.ollama_llm_client import OllamaLLMClient
+from agent_core.memory.summary_store_adapter import SummaryStoreAdapter
 from agent_core.mpc.nillion_client import NillionClient
 from agent_core.utils import setup_logging
 
@@ -79,6 +82,20 @@ class ZuluLiveWhisperXMPC:
         self.ollama_client = OllamaClient()
         self.summarizer = CallSummarizer(self.ollama_client)
         
+        # Initialize v2 summarizer (two-model optimized)
+        llm_client = OllamaLLMClient()
+        summary_store = SummaryStoreAdapter(self.memory)
+        config = SummarizerConfig(
+            chunk_model="qwen2.5:1.5b",
+            synthesis_model="llama3.1:8b",
+            max_chunk_chars=2000,
+        )
+        self.summarizer_v2 = ZuluSummarizer(llm_client, summary_store, config)
+        
+        # Buffer for live chunking
+        self.summary_buffer = []
+        self.last_summary_time = 0
+        
         # MPC (optional)
         self.enable_mpc = enable_mpc
         if enable_mpc:
@@ -104,6 +121,29 @@ class ZuluLiveWhisperXMPC:
             "text": turn.text,
             "embedding": vec.tolist() if hasattr(vec, 'tolist') else list(vec),
         }
+    
+    def _generate_live_chunk_summary(self, session_id: str, text: str):
+        """Generate and display live chunk summary (Otter.ai-style)."""
+        if not text.strip():
+            return
+        
+        try:
+            print("\n" + "="*60)
+            print("[LIVE SUMMARY] Generating chunk summary...")
+            print("="*60)
+            
+            chunk_summary = self.summarizer_v2.summarize_live_chunk(
+                conversation_id=session_id,
+                raw_text=text,
+            )
+            
+            # Display to user in real-time
+            print(f"\n{chunk_summary}\n")
+            print("="*60 + "\n")
+            
+        except Exception as e:
+            print(f"[!] Live chunk summary failed: {e}")
+            # Non-critical - continue processing
 
     def run(self, auto_delete_audio: bool = True) -> Dict[str, Any]:
         """
@@ -181,6 +221,9 @@ class ZuluLiveWhisperXMPC:
         for turn in turns:
             full_transcript.append(f"[{turn.speaker}] {turn.text}")
             emb_rec = self._turn_to_embedding(turn)
+            
+            # Add to live summary buffer
+            self.summary_buffer.append(turn.text)
 
             # Track speaker stats
             if turn.speaker not in speaker_stats:
@@ -189,11 +232,25 @@ class ZuluLiveWhisperXMPC:
             speaker_stats[turn.speaker]["duration"] += (turn.end - turn.start)
 
             # Store locally (SQLCipher) - FULL DATA
-            # TODO: Adjust method calls to match your SessionStore implementation
-            # Example if your store uses different methods:
-            # self.memory.insert_turn(...)
+            self.memory.store_turn(
+                session_id=session_id,
+                speaker=turn.speaker,
+                text=turn.text,
+                start=turn.start,
+                end=turn.end,
+                embedding=emb_rec["embedding"],
+            )
             
-            print(f"  [OK] Stored turn: {turn.speaker} ({turn.end - turn.start:.1f}s)")
+            # Generate live chunk summary every 30s or 2000 chars
+            now = time.time()
+            if self.last_summary_time == 0:
+                self.last_summary_time = now
+            
+            buffer_text = " ".join(self.summary_buffer)
+            if (now - self.last_summary_time > 30) or (len(buffer_text) > 2000):
+                self._generate_live_chunk_summary(session_id, buffer_text)
+                self.summary_buffer = []
+                self.last_summary_time = now
 
             # Prepare for MPC - ONLY embeddings + metadata (NO TEXT)
             mpc_batch.append({
@@ -229,44 +286,40 @@ class ZuluLiveWhisperXMPC:
                 print(f"\n[!] MPC call failed (continuing local only): {e}")
                 mpc_result = {"status": "mpc_failed"}
 
-        # Step 6: Local LLM summary
+        # Step 6: Flush remaining buffer and generate final summary (v2)
         print("\n" + "="*60)
-        print("[*] Generating summary (local LLM)...")
+        print("[*] Generating final executive summary (v2)...")
         print("="*60 + "\n")
         
-        # Convert turns to DiarizedSegment format for summarizer
-        from agent_core.inference.diarization import DiarizedSegment
-        segments = [
-            DiarizedSegment(
-                speaker=turn.speaker,
-                start=turn.start,
-                end=turn.end,
-                text=turn.text
-            )
-            for turn in turns
-        ]
+        # Flush any remaining buffer
+        if self.summary_buffer:
+            buffer_text = " ".join(self.summary_buffer)
+            self._generate_live_chunk_summary(session_id, buffer_text)
+            self.summary_buffer = []
         
-        # Build context for summarizer
-        summary_context = {
-            "session_id": session_id,
-            "speaker_count": len(speaker_stats),
-            "total_turns": len(turns),
-            "mpc_insights": mpc_result,
-        }
-        
-        # Summarizer is bulletproof - handles all errors internally
-        print("[*] Calling LLM to generate summary...")
+        # Generate final synthesis from all chunks
+        print("[*] Synthesizing final summary from chunks...")
         try:
-            summary = self.summarizer.summarize_call(
-                segments,
-                metadata=summary_context,
+            final_summary_text = self.summarizer_v2.generate_final_summary(
+                conversation_id=session_id,
+                clear_cache=False,  # Keep chunks for inspection
             )
             
-            # Check if we got a real summary or fallback
-            if "note" in summary and "AI summarization unavailable" in summary.get("note", ""):
-                print("[!] LLM summary unavailable - using basic fallback\n")
-            else:
-                print("[OK] ✅ Summary generated successfully\n")
+            print("[OK] ✅ Final summary generated\n")
+            print("="*60)
+            print("[*] EXECUTIVE SUMMARY")
+            print("="*60)
+            print(final_summary_text)
+            print("="*60 + "\n")
+            
+            # Create summary dict for compatibility
+            summary = {
+                "summary": final_summary_text,
+                "key_points": [],  # Extracted from text if needed
+                "action_items": [],
+                "decisions": [],
+                "sentiment": "neutral",
+            }
             
             # ========== EPISODIC MEMORY: Store session-level summary ==========
             # Create embedding of the summary text for instant recall
@@ -286,7 +339,7 @@ class ZuluLiveWhisperXMPC:
                         "decisions_count": len(summary.get("decisions", [])),
                     }
                     
-                    self.session_store.store_session_summary(
+                    self.memory.store_session_summary(
                         session_id=session_id,
                         summary_text=summary_text,
                         embedding=summary_embedding.tobytes(),
