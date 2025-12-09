@@ -16,6 +16,7 @@ import os
 import time
 from typing import List, Dict, Any
 import uuid
+from datetime import datetime
 
 # CRITICAL: Monkey-patch torch.load BEFORE any torch/whisperx imports
 # PyTorch 2.6+ has weights_only=True by default which breaks PyAnnote models
@@ -206,8 +207,18 @@ class ZuluLiveWhisperXMPC:
         session_id = str(uuid.uuid4())
         print(f"\n[ID] Session ID: {session_id}")
         
-        # TODO: Adapt to your actual SessionStore methods
-        # If your SessionStore doesn't have these exact methods, adjust accordingly
+        # Calculate session metadata
+        started_at = datetime.now().isoformat()
+        duration = turns[-1].end if turns else 0.0
+        
+        # Insert session into database
+        self.memory.insert_session(
+            session_id=session_id,
+            started_at=started_at,
+            title=f"Live Recording {datetime.now():%Y-%m-%d %H:%M}",
+            duration_seconds=duration,
+            language="en",
+        )
         
         # Step 4: Embeddings + local storage
         print("\n" + "="*60)
@@ -232,13 +243,12 @@ class ZuluLiveWhisperXMPC:
             speaker_stats[turn.speaker]["duration"] += (turn.end - turn.start)
 
             # Store locally (SQLCipher) - FULL DATA
-            self.memory.store_turn(
+            self.memory.insert_utterance(
                 session_id=session_id,
-                speaker=turn.speaker,
+                speaker_label=turn.speaker,
+                start_time=turn.start,
+                end_time=turn.end,
                 text=turn.text,
-                start=turn.start,
-                end=turn.end,
-                embedding=emb_rec["embedding"],
             )
             
             # Generate live chunk summary every 30s or 2000 chars
