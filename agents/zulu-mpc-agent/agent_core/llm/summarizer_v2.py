@@ -113,13 +113,15 @@ class SummarizerConfig:
     )
 
     synthesis_prompt: str = (
-        "You are an executive assistant.\n"
-        "You will receive multiple short summaries from one meeting.\n\n"
-        "Combine them into a single, cohesive summary with:\n"
-        "- A short overview (2–3 sentences)\n"
-        "- 3–7 bullet points for key decisions, actions, and blockers\n"
-        "- Clear, neutral tone\n\n"
-        "Chunk summaries:\n"
+        "You are a helpful assistant that summarizes conversations.\n"
+        "Below are summaries from different parts of a conversation.\n\n"
+        "Combine them into a single, accurate summary that:\n"
+        "- Captures what was actually discussed (2-3 sentences overview)\n"
+        "- Lists the main points or topics mentioned\n"
+        "- Uses only information from the provided summaries\n"
+        "- Does NOT add information that wasn't mentioned\n"
+        "- Maintains a clear, neutral tone\n\n"
+        "Conversation summaries:\n"
     )
 
     # Generation settings
