@@ -59,17 +59,61 @@ class SessionStore(LoggerMixin):
         """Initialize database schema."""
         schema_file = Path(__file__).parent.parent.parent / "data" / "schemas" / "001_core.sql"
         
-        if not schema_file.exists():
-            raise FileNotFoundError(f"Schema file not found: {schema_file}")
-        
-        with open(schema_file, 'r') as f:
-            schema_sql = f.read()
-        
         conn = self._get_connection()
         try:
-            conn.executescript(schema_sql)
-            conn.commit()
-            self.logger.debug("Database schema initialized")
+            if schema_file.exists():
+                with open(schema_file, 'r') as f:
+                    schema_sql = f.read()
+                conn.executescript(schema_sql)
+                conn.commit()
+                self.logger.debug("Database schema initialized from file")
+            else:
+                # Fallback: Create essential tables manually
+                self.logger.warning(f"Schema file not found: {schema_file}. Creating minimal schema.")
+                conn.executescript("""
+                    CREATE TABLE IF NOT EXISTS sessions (
+                        id TEXT PRIMARY KEY,
+                        started_at TEXT NOT NULL,
+                        ended_at TEXT,
+                        title TEXT,
+                        summary TEXT,
+                        metadata_json TEXT,
+                        audio_path TEXT,
+                        duration_seconds REAL,
+                        language TEXT DEFAULT 'en',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS utterances (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        speaker_label TEXT NOT NULL,
+                        start_time REAL NOT NULL,
+                        end_time REAL NOT NULL,
+                        text TEXT NOT NULL,
+                        confidence REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (session_id) REFERENCES sessions(id)
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS memories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        speaker TEXT,
+                        text TEXT NOT NULL,
+                        embedding BLOB,
+                        is_session_summary INTEGER DEFAULT 0,
+                        metadata_json TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (session_id) REFERENCES sessions(id)
+                    );
+                    
+                    CREATE INDEX IF NOT EXISTS idx_utterances_session ON utterances(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_memories_summary ON memories(is_session_summary);
+                """)
+                conn.commit()
+                self.logger.info("✅ Minimal database schema created")
         finally:
             conn.close()
     
