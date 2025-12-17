@@ -1,535 +1,380 @@
 # ZULU.CASH — Private AI Agent OS for ZEC
 
-<div align="center">
-
-[![Built for Zypherpunk](https://img.shields.io/badge/Built%20for-Zypherpunk-F4B728?style=for-the-badge)](https://zypherpunk.xyz)
-[![Zcash](https://img.shields.io/badge/Zcash-Shielded-F4B728?style=for-the-badge&logo=zcash)](https://z.cash)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Privacy First](https://img.shields.io/badge/Privacy-First-purple?style=for-the-badge)](https://zulu.cash)
+**Built for Zypherpunk · Privacy First · MIT License**
 
 **Local-First AI • Shielded Identity • Private Memory • Zero Cloud**
 
-[Website](https://zulu.cash) • [Lite Paper](docs/litepaper.md) • [Architecture](docs/architecture.md) • [FAQ](docs/faq.md)
-
-</div>
+🌐 [Website](https://zulu.cash) · 📄 [Lite Paper](docs/litepaper.md) · 🏗 [Architecture](docs/architecture.md) · ❓ [FAQ](docs/faq.md)
 
 ---
 
-## Every home got a personal computer.
+> Every home got a personal computer.  
+> Every person will get a private AI.  
+> **ZULU is the first one built for that world.**
 
-## Every person will get a private AI.
-
-**ZULU is the first one built for that world.**
-
----
-
-> **Zulu is a warrior who remembers your mind, not your wallet.**
+Zulu is a warrior who remembers your mind — not your wallet.
 
 ---
 
-## What ZULU Actually Is
+## What ZULU Is
 
-ZULU is a **local-first AI agent** that lives on your device.
+**ZULU is a local-first AI agent OS that lives entirely on your device.**
 
-It joins live calls, transcribes in real time, summarizes context, and stores everything privately in an encrypted SQLCipher database.
+It can:
+- Join live calls
+- Transcribe in real time
+- Identify speakers
+- Summarize context
+- Store long-term memory
 
-- **No cloud inference**
-- **No upstream embeddings**
-- **No hidden model training**
+All data is stored **locally**, **encrypted**, and **never sent to the cloud**.
 
-Your conversations, your memory, your data — **stay inside your machine.**
+There is:
+- ❌ No cloud inference  
+- ❌ No upstream embeddings  
+- ❌ No hidden training  
+- ❌ No telemetry  
+
+Your conversations, your memory, your data — stay inside your machine.
 
 ---
 
 ## Why Legacy AI Will Lose
 
-Fireflies, Rewind, Otter — every "AI note taker" SaaS:
+Every "AI note-taker" SaaS (Otter, Fireflies, Rewind):
 
-- Streams your audio to cloud GPUs
-- Fingerprints your voice
-- Stores your embeddings
-- Farms your behavioral data
-- Uses your conversations to train their models
+- Streams audio to cloud GPUs  
+- Fingerprints your voice  
+- Stores embeddings remotely  
+- Builds behavioral profiles  
+- Trains models on your conversations  
 
-They sell you **convenience** while mining the most valuable human asset of the 21st century: **attention + memory.**
+They sell convenience while mining the most valuable human asset of the 21st century:  
+**attention + memory**.
 
 **ZULU is the opposite.**  
 It does not mine you. It works for you.
 
 ---
 
-## 🛡️ Core Principles
+## 🧠 Local-First Software (Ink & Switch Alignment)
 
-- ✅ **On-device AI** (Ollama / GGUF)
-- ✅ **Encrypted memory** (SQLCipher / local vector store)
-- ✅ **Shielded Zcash identity** (Orchard receivers)
-- ✅ **Selective disclosure** → never audience-wide leaks
-- ✅ **Zero cloud, zero custody, zero surveillance**
+ZULU is built on the principles of **Local-First Software**, as defined by Ink & Switch:  
+https://www.inkandswitch.com/essay/local-first/
 
-### Zulu does NOT:
-- ❌ Hold user funds
-- ❌ Transmit data to 3rd-party APIs
-- ❌ Store multi-tenant logs
-- ❌ Rely on SaaS LLMs
-- ❌ "Farm" user conversations
+Local-first software treats the user's device as the **primary computer**, not a thin client for someone else's server.
+
+This is not a UX preference.  
+It is a systems architecture decision.
+
+### How ZULU Implements Local-First (For Real)
+
+**Fast**  
+- Local inference (Ollama, Whisper)
+- No network latency
+
+**Works Offline**  
+- Fully functional without internet
+- No auth servers, no cloud dependencies
+
+**Data Ownership**  
+- All data stored in a local SQLCipher vault
+- Delete a file = delete your data
+
+**Privacy by Default**  
+- No telemetry
+- No SaaS LLMs
+- No upstream embeddings
+
+**User Control**  
+- Selective disclosure
+- Explicit, scoped memory sharing
+- You don't "log in" — you reveal a note
+
+**Resilience**  
+- No server outages
+- No account lockouts
+- No API quota failures
+
+**Transparency**  
+- Open source
+- Auditable storage
+- Deterministic behavior
+
+---
+
+## �️ Verifiable Integrity (BLAKE3)
+
+ZULU does not trust files by name, version, or source.
+
+It verifies **every byte**.
+
+### What This Means
+- Models, plugins, and memory are **stream-verified**
+- If **one bit changes**, verification fails
+- No cloud trust assumptions
+- No silent corruption
+
+---
+
+## 🧪 Verification System — Working Demo
+
+The verification engine is implemented and tested locally.
+
+**Location**: `agents/zulu-verification/`
+
+### Proven Capabilities
+
+✅ BIP-39 seed phrase generation  
+✅ Ed25519 key infrastructure  
+✅ BLAKE3 hashing  
+✅ Deterministic chunking (MODEL = 1 MiB)  
+✅ Per-chunk verification  
+✅ Root commitments  
+✅ Integrity receipts (SQLCipher-ready)  
+
+### What the Demo Does
+
+1. Generates a 12-word seed phrase  
+2. Creates a 5 MB test artifact  
+3. Splits into deterministic chunks  
+4. Hashes each chunk with BLAKE3  
+5. Builds a root commitment  
+6. Verifies every chunk  
+
+If any chunk is modified, verification fails immediately.
+
+**Run the demos:**
+```bash
+# From repo root
+cd agents/zulu-verification
+
+# Build TypeScript
+npm run build
+
+# Verify clean artifact
+npm run demo
+
+# Run adversarial tamper tests
+npm run demo:attack
+
+# Test deterministic key derivation
+npm run demo:keys
+```
+
+Each command:
+- Compiles TypeScript → `dist/`
+- Runs against production JS
+- Demonstrates real cryptographic guarantees
+
+This module underpins:
+- Model installs
+- Plugin loading
+- Memory export/import
+- Resume-safe downloads
+- Future P2P distribution
 
 ---
 
 ## 🚀 Production-Ready: ZULU MPC Agent
 
-**Location**: `agents/zulu-mpc-agent/`
+📍 `agents/zulu-mpc-agent/` 
 
-A complete, production-ready implementation of ZULU's vision:
+A complete production implementation:
 
-- ✅ **22 Python files, ~4,500 LOC**
-- ✅ **Local Whisper Transcription** (faster-whisper with GPU)
-- ✅ **Speaker Diarization** (PyAnnote/WhisperX)
-- ✅ **Encrypted SQLCipher Database** (AES-256)
-- ✅ **Local LLM Summarization** (Ollama)
-- ✅ **Feature Extraction** (sentence-transformers)
-- ✅ **MPC Client Framework** (Nillion-ready)
-- ✅ **Full CLI Interface** (Rich terminal UI)
-- ✅ **Docker Support** (Production deployment)
+- ✅ ~4,500 LOC Python
+- ✅ Local Whisper transcription (GPU)
+- ✅ Speaker diarization (WhisperX / PyAnnote)
+- ✅ Encrypted SQLCipher memory (AES-256)
+- ✅ Local LLM summarization (Ollama)
+- ✅ Episodic memory architecture
+- ✅ MPC-ready (Nillion framework)
+- ✅ Full CLI + Docker support
 
-**Quick Start:**
+### Quick Start
+
 ```bash
 cd agents/zulu-mpc-agent
 ./quickstart.sh
 zulu process audio.wav --title "Team Meeting"
 ```
 
-**Documentation**: See [`docs/zulu-mpc-agent.md`](docs/zulu-mpc-agent.md) for full details.
+**Docs**: [`docs/zulu-mpc-agent.md`](docs/zulu-mpc-agent.md)
 
----
+### 🧠 Hierarchical Summarization (Zero Hallucination)
 
-## 📢 Recent Updates (Building in Public)
-
-### **December 9, 2025 — v1.2.0: Zero-Hallucination Memory System**
-
-**🎯 Critical Privacy Fix: Eliminated Summarization Hallucinations**
-- **Problem:** Summarizer was adding invented corporate context to all conversations
-  - Personal calls became "executive team meetings"
-  - Casual conversations became "quarterly planning sessions"
-  - Privacy violation: LLM inventing content not actually discussed
-- **Solution:** Completely rewrote synthesis prompts for strict factual grounding
-  - Removed "executive assistant" and "meeting" priming
-  - Added explicit anti-hallucination constraints
-  - Changed from creative to fact-only summarization
-- **Impact:** 100% accurate summaries based on actual conversation content
-- **Files:** `agent_core/llm/summarizer_v2.py` (production-ready)
-- **Docs:** [`RELEASE_v1.2.0.md`](RELEASE_v1.2.0.md)
-
-**🧠 Hierarchical Summarization v2**
-- **Qwen2.5-1.5B** → Fast, accurate chunk summaries (1-2s each)
-- **Llama3.1-8B** → High-quality final synthesis (10-15s)
+- **Qwen2.5-1.5B** → fast factual chunk summaries
+- **Llama3.1-8B** → high-quality synthesis
 - Auto-chunking for long audio
-- Factual-only constraint enforcement
-- 5-6x faster than v1, zero hallucinations
+- Fact-only constraints
 
-**📚 New Episodic Memory Table**
-- Structured storage for chunk summaries, final summaries, timestamps
-- Session-level embedding for instant recall
-- Full SQLCipher encryption
-- Enables true private long-term memory
+**Result:**  
+Accurate summaries grounded in real audio.  
+No invented context. No hallucinations.
 
-**🗂️ Database Architecture Improvements**
-- Fixed SessionStore methods (`insert_utterance`, `insert_session`, `insert_summary`)
-- Added memories table with `is_session_summary` flag
-- Improved consistency and reliability
-- Schema auto-migration support
+### 📚 Episodic Memory System
 
-**🎯 What This Means:**
-- **ZULU now produces verifiable, accurate summaries grounded in real audio**
-- No hallucinations, no invented content, no privacy violations
-- True private memory system: remembers what you said, not what it thinks you meant
-- **Still 100% local, 100% encrypted, 100% open source**
+ZULU remembers like a human:
 
-### **December 5, 2024 — Production-Grade Intelligence**
+- Session-level summaries
+- Encrypted long-term recall
+- One embedding = entire event
+- 300× faster retrieval
 
-**🧠 Hierarchical Summarization Engine**
-- **Problem:** Long recordings (2+ hours) caused LLM context overflow and hallucinations
-- **Solution:** Implemented chunked hierarchical summarization (like Otter.ai)
-  - Splits transcripts into 40-segment chunks
-  - Summarizes each chunk independently
-  - Merges chunk summaries into final comprehensive summary
-- **Impact:** 10x faster (60s vs 594s), zero hallucinations, scales to unlimited length
-- **Files:** `agent_core/llm/summarizer.py` (~450 LOC production code)
-- **Docs:** [`HIERARCHICAL_SUMMARY_UPGRADE.md`](agents/zulu-mpc-agent/HIERARCHICAL_SUMMARY_UPGRADE.md)
-
-**📝 Episodic Memory System**
-- **Problem:** Searching 300+ embeddings per session is slow
-- **Solution:** Store one session-level summary embedding (like human memory)
-  - Session summaries stored as `is_session_summary=1` flag
-  - Instant recall: 1 embedding = entire meeting
-  - Two-tier search: session-level first, turn-level fallback
-- **Impact:** 300x faster recall, human-like memory architecture
-- **Files:** `agent_core/memory/session_store.py` (~180 LOC episodic memory methods)
-- **Docs:** [`EPISODIC_MEMORY.md`](agents/zulu-mpc-agent/EPISODIC_MEMORY.md)
-
-**🐛 Production Hardening**
-- Fixed unhashable type errors in sentiment display
-- Safe JSON serialization for all LLM outputs
-- Graceful error handling for episodic memory storage
-- Full traceback logging for debugging
-- **Docs:** [`BUGFIX_EPISODIC_MEMORY.md`](agents/zulu-mpc-agent/BUGFIX_EPISODIC_MEMORY.md)
-
-**🎯 What This Means:**
-- ZULU now handles 2-hour calls like production services (Otter, Fireflies)
-- Human-like episodic memory (remember events, not just facts)
-- **Still 100% local, 100% private, 100% open source**
+Memory stores what happened, not guesses.
 
 ---
 
-## �🚀 Run the Agent
+##  Why Zcash?
 
-```bash
-zulu process meeting.wav --title "Product Sync"
-zulu list
-zulu health
-```
+Zcash is the only chain designed for selective disclosure by default.
 
-**If you can run Docker, you can run ZULU.**
+ZULU uses:
+- Orchard shielded receivers
+- Viewing-key-based access
+- No custodial wallets
+- No payment processing
 
----
-
-## 🎯 Vision
-
-> **Artificial Intelligence should be your ally — not your spy.**
-
-- Your agent learns about you **privately**
-- Your knowledge stays **local**
-- Your identity is **shielded**
-
-This is **beyond Web2 analytics**, beyond surveillance finance, beyond Panopticon AI.
-
----
-
-## 🧠 What ZULU Does
-
-### During the call:
-- Listen
-- Transcribe
-- Diarize (identify speakers)
-- Embed
-- Summarize
-- Store encrypted
-
-### After the call:
-- Answer questions from your own memory
-- Extract action items
-- Generate context-aware insights
-- All private. All local.
-
-### This is:
-- ✅ **Personal AI you own**
-- ❌ Not a cloud AI that owns you
-
----
-
-## 🌑 Why Zcash?
-
-Zcash is the only chain designed for **selective disclosure by default**.
-
-**Orchard shielded receivers = access keys.**
-
-- **Not** a payment rail
-- **Not** merchant processing
-- **Not** stablecoin pivots
-
-They are **cryptographic identity primitives**.
-
-You don't reveal a private key.  
-You reveal a receiver with limited scope.
-
-This is **perfect for AI identity + permissioning**.
+Zcash is not a payment rail here.  
+It is a cryptographic identity primitive.
 
 ---
 
 ## 🧩 Example Use Cases
 
 ### 1. Personal AI Memory
-Your assistant remembers your conversations, tasks, and knowledge.  
-**Stored encrypted on device.**
+Your assistant remembers conversations and knowledge — encrypted, local, private.
 
 ### 2. Selective Sharing
-Share a bounded memory trace with:
-- Your accountant
-- Your business partner
-- Your doctor
+Reveal a bounded memory trace to:
+- An accountant
+- A partner
+- A doctor
 
-**You don't "sign in"**  
-**You "reveal a note"**
+No logins. No global access. Just proof.
 
 ---
 
 ## 🧠 Live Agent Advantage
 
-Every competitor is **"after-the-call"**:
+Every competitor is "after the call".
 
-- ❌ **Otter** = cloud logging
-- ❌ **Fireflies** = SaaS recording
-- ❌ **Rewind AI** = uploads embeddings
+ZULU is **during the call**:
+- Local speech pipeline
+- Local embeddings
+- Local memory
 
-**Zulu is during the call:**
-- ✅ Local speech pipeline
-- ✅ Local transcription
-- ✅ Local embeddings
-
-**No cloud. No honeypots. No telemetry.**
-
-The intelligence is **yours**, not theirs.
+No cloud. No honeypots. No surveillance.
 
 ---
 
-## ⚙️ Tech Stack (High-level)
+## ⚙️ Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| **LLM** | Ollama (Phi-3, Llama-3.1, Mistral) |
-| **Memory** | Encrypted SQLite + private embeddings |
-| **Audio** | VAD → Whisper.cpp (offline) |
-| **Zcash** | Orchard Unified Address |
-| **Vector Store** | Local (FAISS / Qdrant local mode) |
-| **Frontend** | Electron + Tailwind |
+| **LLM** | Ollama (Llama-3.1, Phi-3, Mistral) |
+| **Memory** | SQLCipher + local embeddings |
+| **Audio** | Whisper (offline) |
+| **Integrity** | BLAKE3 |
+| **Identity** | Zcash Orchard |
+| **UI** | Electron + Tailwind |
 | **Servers** | None |
 
 ---
 
-## 📦 Repository Structure (Truthful)
+## 📦 Repository Structure
 
 ```
 zulu.cash/
 ├── agents/
-│   ├── zulu-mpc-agent/    # ⭐ THE actual implementation (~4,500 LOC)
-│   │   └── agent_core/
-│   │       ├── inference/     # Whisper, diarization, embeddings
-│   │       ├── llm/           # Ollama client, summarization
-│   │       ├── memory/        # SQLCipher encrypted vault
-│   │       ├── mpc/           # Nillion MPC interface
-│   │       ├── pipelines/     # Processing orchestration
-│   │       ├── prompts/       # LLM system prompts
-│   │       └── utils/         # Config, crypto, logging
-│   │
-│   ├── live/              # In-progress (future)
-│   ├── ledger/            # In-progress (future)
-│   └── signer/            # In-progress (future)
-│
-├── ui/                    # Desktop UX (Electron + Tailwind)
-├── wallet/                # ZEC lightwalletd + Orchard integration
-├── storage/               # Encrypted vault & migrations
-├── docs/                  # Full technical documentation
-└── scripts/               # Local utilities
-
+│   ├── zulu-mpc-agent/       # ⭐ production agent
+│   ├── zulu-verification/
+│   ├── live/                 # future
+│   └── ledger/               # future
+├── ui/
+├── wallet/
+├── storage/
+├── docs/
+└── scripts/
 ```
 
-**We build the MPC-first agent. We refactor after it dominates.**
+---
 
-### 🎯 What This Shows Judges
+## 🧭 What This Shows Judges
 
-- ✅ **Production MVP** (22 Python files, fully functional)
-- ✅ **Honest architecture** (not vaporware)
-- ✅ **Privacy-first** (all processing local)
-- ✅ **MPC-ready** (Nillion integration framework)
+✅ Real code  
+✅ Production MVP  
+✅ Privacy by architecture  
+✅ No cloud dependency  
+✅ Honest scope  
+✅ Zypherpunk-aligned
 
 ---
 
-## 🧭 Hackathon Track Fit
+## 🎯 Vision
 
-**Privacy-Preserving AI & Computation**
+Artificial intelligence should be your ally — not your spy.
 
-Best possible category for a local-first, shielded-identity AI agent.
+Local inference.  
+Encrypted memory.  
+Selective disclosure.
 
----
-
-## � The Architectural Leap
-
-**Otter** = transcription SaaS  
-**Fireflies** = meeting analytics SaaS  
-**Rewind** = surveillance wrapped in UX
-
-**ZULU** = **Private Agent OS**
-
-Not a "tool," not a plugin, not a wrapper.  
-**A new computing primitive:**
-
-> Local agent → encrypted memory → selective reveal
-
-**This is the personal-computing moment for AI.**
-
-Their "AI Agents" are:
-- Datastream ingestion machines
-- Post-hoc summaries
-- Rented from someone else's GPU farm
-- Governed by Terms of Service, not your keys
-- Built to scale **them**, not **you**
-
-**ZULU flips the axis:**  
-AI as a **personal asset**, not a rented service.
-
-This terrifies incumbents because:
-- There is no data moat
-- There is no surveillance funnel
-- There is no sticky network effect
-- **The value accrues to the user, not the platform**
-
----
-
-## �� What ZULU Is Not
-
-- ❌ A custodial wallet
-- ❌ Merchant service
-- ❌ Payment processor
-- ❌ Stablecoin bridge
-- ❌ Tax SaaS
-
-**Zulu = Private Agent OS.**
+AI as a personal asset — not a rented service.
 
 ---
 
 ## 🛠️ Getting Started
 
 ### Requirements
+- Node.js 18+
+- Python 3.10+
+- Ollama
+- SQLCipher
 
-- **Node.js 18+**
-- **Python 3.10+**
-- **Ollama** installed locally
-- **SQLCipher**
-- **Zcash lightwalletd** endpoint (testnet/mainnet)
-
-### Run Agent Core
-
+### Run agent:
 ```bash
-cd agent/core
-pip install -r requirements.txt
-python context_manager.py
-```
-
-### Run Frontend
-
-```bash
-cd agent/ui/electron
-npm install
-npm run dev
-```
-
-### Quick Test
-
-```bash
-# Install dependencies
 npm run setup
-
-# Run demo
 npm run demo
-
-# Test AI queries
-npm run test:ai
 ```
-
----
-
-## � Why Developers Join Us
-
-You're not building another "app."  
-**You're defining a computing paradigm:**
-
-- Private inference
-- Encrypted memory
-- Interoperable agents
-- MPC collaboration
-- Sovereign identity
-
-**ZULU is a frontier domain.**  
-**It will mint reputations.**
-
-If that excites you — **contribute**.  
-If that scares you — **watch**.
 
 ---
 
 ## 🤝 Contributing
 
-### We accept:
-- Diarization improvements
+We welcome:
 - Inference speedups
-- Nillion MPC experiments
-- LLM formatting agents
-- UI components
-- Miner-friendly workflows
-- Plugin adapters
-- Personal voice embeddings
+- Memory research
+- MPC experiments
+- UI improvements
 
-### We reject:
-- Cloud SaaS architectures
+We reject:
+- Cloud SaaS designs
 - Surveillance analytics
-- "AI wrappers"
-- Data scraping shortcuts
+- Data extraction shortcuts
 
-**ZULU is sacred. Not negotiable.**
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
-
----
-
-## 🛡️ Security
-
-| Security Feature | Implementation |
-|-----------------|----------------|
-| Private keys | ❌ ZULU **never** asks for private keys |
-| Viewing keys | ✅ Only uses viewing keys for note scanning |
-| Data storage | ✅ All data is local & encrypted (SQLCipher) |
-| AI inference | ✅ Fully local (Ollama) |
-| Cloud services | ❌ No cloud inference |
-| Telemetry | ❌ None |
-| Multi-tenant logs | ❌ None |
-
-> See [SECURITY.md](SECURITY.md) for detailed threat model.
+ZULU is sacred. Not negotiable.
 
 ---
 
 ## 📜 License
 
-**Open for builders.**  
-**Closed to extractors.**
+MIT License.
 
-[MIT License](LICENSE) — We move on warrior time.
+Open for builders. Closed to extractors.
 
 ---
 
 ## 🟣 Follow the Build
 
-<div align="center">
-
-**Website:** [zulu.cash](https://zulu.cash)  
-**X/Twitter:** [@MyCrypt0world](https://x.com/MyCrypt0world)  
-**Hackathon:** [zypherpunk.xyz](https://zypherpunk.xyz)  
-**GitHub:** [edgeconsultinglabs/zulu.cash](https://github.com/edgeconsultinglabs/zulu.cash)  
-**Email:** team@edgeconsultinglabs.com
-
-</div>
+**Website**: https://zulu.cash  
+**X**: @MyCrypt0world  
+**GitHub**: edgeconsultinglabs/zulu.cash  
+**Hackathon**: zypherpunk.xyz
 
 ---
 
-<div align="center">
+The future of AI is private.
 
-## The Line That Scares Everyone:
+Not rented. Not surveilled. Not harvested.
 
-## **The future of AI is private.**
-
-**Not rented, not surveilled, not harvested.**
-
----
-
-**Intelligence without surveillance.**  
-**Memory without extraction.**  
-**AI without empire.**
-
----
-
-**ZULU is how people reclaim it.**
-
----
-
-*Built for the Zypherpunk Hackathon*  
-*Local AI • Shielded Identity • Private Memory*
-
-</div>
+ZULU is how people reclaim it.

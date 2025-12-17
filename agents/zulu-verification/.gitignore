@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+
+# Keep dist/ out of version control (generated)
+dist/
+
+# Exclude config and utility files from ignore
+!jest.config.js
+!jest.config.cjs
+!fix-imports.js
+!test-system.js
+!demo.js
+!examples/*.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temp files
+temp/
+temp_*/
+*.tmp
+*.log
+
+# Data files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Exports
+exports/
+*.bundle.json
+*.receipt.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+.env.local
+*.key
+*.pem
+*_private.json
+
+# Models (large files)
+*.gguf
+*.bin
+*.pt
+*.safetensors
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
