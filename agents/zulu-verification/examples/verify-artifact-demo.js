@@ -7,11 +7,11 @@ const {
   generateMnemonic, 
   deriveKeyPair,
   mnemonicToSeed 
-} = require('./dist/crypto/ed25519.js');
-const { hashBuffer } = require('./dist/crypto/blake3.js');
-const { chunkBuffer, getChunkSize } = require('./dist/chunking/deterministic.js');
-const { createRootCommitment } = require('./dist/chunking/commitment.js');
-const { ArtifactType, CommitmentStrategy } = require('./dist/types/index.js');
+} = require('../dist/crypto/ed25519.js');
+const { hashBuffer } = require('../dist/crypto/blake3.js');
+const { chunkBuffer, getChunkSize } = require('../dist/chunking/deterministic.js');
+const { createRootCommitment } = require('../dist/chunking/commitment.js');
+const { ArtifactType, CommitmentStrategy } = require('../dist/types/index.js');
 
 async function demo() {
   console.log('🔐 Zulu Verification System - Live Demo\n');
