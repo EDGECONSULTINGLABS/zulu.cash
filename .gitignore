@@ -50,34 +50,38 @@ out/
 .DS_Store
 .windsurf/
 
+# Runtime State (NEVER commit user data)
+# These directories contain local runtime state and must remain private
+/storage/
+/data/
+/models/
+/logs/
+/wallet/
+/agents/*/data/
+/agents/*/storage/
+/agents/*/models/
+/agents/*/logs/
+
 # Database & Local Storage
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlcipher
-/storage/
-/data/
-/agents/*/data/
-/agents/*/storage/
 
 # Models & Binaries
-/models/
-/agents/*/models/
 ffmpeg-8.0.1/
 *.bin
 *.pt
 *.pth
 *.onnx
+*.gguf
 
 # Logs
-/logs/
-/agents/*/logs/
 *.log
 *.log.*
 
 # Wallet & Private Keys
-/wallet/
 *.key
 *.pem
 *.p12
