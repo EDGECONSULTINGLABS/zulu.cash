@@ -431,8 +431,8 @@ class ZuluLiveWhisperXMPC:
             try:
                 os.unlink(wav_path)
                 print(f"[*] Audio file deleted: {wav_path}")
-            except:
-                pass
+            except Exception as e:
+                print(f"[!] Warning: Could not delete audio file {wav_path}: {e}")
 
         print("\n[OK] Processing complete!")
         print("[*] All data encrypted and stored locally")

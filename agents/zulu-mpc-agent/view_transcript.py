@@ -17,34 +17,35 @@ def view_latest_session():
         return
     
     session = sessions[0]
-    session_id = session['session_id']
-    
+    session_id = session['id']
+    metadata = session.get('metadata', {})
+
     # Display session info
     print("\n" + "="*60)
     print("🔍 LATEST DRAGON MODE SESSION")
     print("="*60)
     print(f"\n📝 Session ID: {session_id}")
     print(f"📅 Created: {session['created_at']}")
-    print(f"⏱️  Duration: {session['metadata'].get('duration', 0):.1f}s")
-    print(f"🎙️  Turns: {session['metadata'].get('turn_count', 0)}")
-    print(f"👥 Speakers: {session['metadata'].get('speaker_count', 0)}")
-    
+    print(f"⏱️  Duration: {metadata.get('duration', 0):.1f}s")
+    print(f"🎙️  Turns: {metadata.get('turn_count', 0)}")
+    print(f"👥 Speakers: {metadata.get('speaker_count', 0)}")
+
     # Get turns (transcript)
-    turns = store.get_session_turns(session_id)
+    turns = store.get_utterances(session_id)
     
     print("\n" + "="*60)
     print("📜 TRANSCRIPT")
     print("="*60 + "\n")
     
     for turn in turns:
-        timestamp = f"[{turn['start']:.1f}s - {turn['end']:.1f}s]"
-        speaker = turn['speaker']
+        timestamp = f"[{turn['start_time']:.1f}s - {turn['end_time']:.1f}s]"
+        speaker = turn['speaker_label']
         text = turn['text']
         print(f"{timestamp} {speaker}:")
         print(f"  {text}\n")
-    
+
     # Get features (embeddings)
-    features = store.get_session_features(session_id)
+    features = store.get_mpc_features(session_id)
     
     print("="*60)
     print("🔐 PRIVACY VALIDATION")
@@ -65,9 +66,10 @@ def view_all_sessions():
     print("="*60 + "\n")
     
     for i, session in enumerate(sessions, 1):
-        print(f"{i}. {session['session_id']}")
+        metadata = session.get('metadata', {})
+        print(f"{i}. {session['id']}")
         print(f"   Created: {session['created_at']}")
-        print(f"   Turns: {session['metadata'].get('turn_count', 0)}")
+        print(f"   Turns: {metadata.get('turn_count', 0)}")
         print()
 
 if __name__ == "__main__":

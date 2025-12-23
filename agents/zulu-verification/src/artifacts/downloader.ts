@@ -234,7 +234,12 @@ export class StreamingDownloader {
         };
       }
 
-      throw error;
+      // Wrap non-VerificationError exceptions to preserve context
+      throw new VerificationError(
+        VerificationErrorCode.NETWORK_ERROR,
+        `Download failed: ${error instanceof Error ? error.message : String(error)}`,
+        { originalError: error }
+      );
     }
   }
 
@@ -285,7 +290,7 @@ export class StreamingDownloader {
       expectedRoot: this.manifest.commitment.root,
       verifiedChunks,
       chunkHashes: this.manifest.commitment.chunkHashes,
-      lastVerifiedChunk: verifiedChunks[verifiedChunks.length - 1],
+      lastVerifiedChunk: verifiedChunks.length > 0 ? verifiedChunks[verifiedChunks.length - 1] : -1,
       timestamp: new Date().toISOString(),
       checksum: '', // Will be calculated
     };

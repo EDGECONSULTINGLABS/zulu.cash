@@ -20,8 +20,9 @@ export class VerificationDatabase {
   constructor(dbPath: string, encryptionKey: string) {
     this.db = new Database(dbPath);
 
-    // Enable SQLCipher encryption
-    this.db.pragma(`key = '${encryptionKey}'`);
+    // Enable SQLCipher encryption (escape single quotes to prevent SQL injection)
+    const escapedKey = encryptionKey.replace(/'/g, "''");
+    this.db.pragma(`key = '${escapedKey}'`);
     this.db.pragma('cipher_page_size = 4096');
     this.db.pragma('kdf_iter = 256000');
     this.db.pragma('cipher_hmac_algorithm = HMAC_SHA512');

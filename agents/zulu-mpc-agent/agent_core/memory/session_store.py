@@ -107,10 +107,24 @@ class SessionStore(LoggerMixin):
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (session_id) REFERENCES sessions(id)
                     );
-                    
+
+                    CREATE TABLE IF NOT EXISTS mpc_feature_index (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        feature_kind TEXT NOT NULL,
+                        feature_hash TEXT NOT NULL,
+                        nillion_handle TEXT NOT NULL,
+                        feature_dim INTEGER,
+                        computation_result TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (session_id) REFERENCES sessions(id)
+                    );
+
                     CREATE INDEX IF NOT EXISTS idx_utterances_session ON utterances(session_id);
                     CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id);
                     CREATE INDEX IF NOT EXISTS idx_memories_summary ON memories(is_session_summary);
+                    CREATE INDEX IF NOT EXISTS idx_mpc_features_session ON mpc_feature_index(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_mpc_features_kind ON mpc_feature_index(feature_kind);
                 """)
                 conn.commit()
                 self.logger.info("✅ Minimal database schema created")

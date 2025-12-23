@@ -1,5 +1,6 @@
 """Speaker diarization pipeline for ZULU MPC Agent."""
 
+import math
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -139,16 +140,19 @@ class DiarizationPipeline(LoggerMixin):
         """
         diarized = []
         num_speakers = min(2, self.max_speakers)  # Default to 2 speakers
-        
+
         for i, seg in enumerate(whisper_segments):
             speaker_id = (i % num_speakers) + 1
+            # Convert avg_logprob (negative log probability) to confidence (0.0-1.0)
+            avg_logprob = getattr(seg, 'avg_logprob', None)
+            confidence = math.exp(avg_logprob) if avg_logprob is not None else None
             diarized.append(
                 DiarizedSegment(
                     speaker=f"SPK_{speaker_id}",
                     start=seg.start,
                     end=seg.end,
                     text=seg.text.strip(),
-                    confidence=getattr(seg, 'avg_logprob', None),
+                    confidence=confidence,
                 )
             )
         
