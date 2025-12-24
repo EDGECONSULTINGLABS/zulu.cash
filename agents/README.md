@@ -1,96 +1,66 @@
-# ZULU Agents
+# Agents
 
-This directory contains the core execution engines for ZULU.
+Agents in this directory are examples.
 
-## Production Agents
+Zulu does not require or enforce a specific agent framework.
+Any AI logic that respects Zulu's execution policies can run here.
+
+---
+
+## Reference implementations
 
 ### `zulu-mpc-agent/`
-**Production local-first AI agent** (Python)
 
-- ~4,500 LOC Python
-- Local Whisper transcription (GPU)
-- Speaker diarization (WhisperX / PyAnnote)
-- Encrypted SQLCipher memory (AES-256)
+Production reference agent (Python)
+
+- Local Whisper transcription
+- Speaker diarization
+- Encrypted SQLCipher memory
 - Local LLM summarization (Ollama)
-- Episodic memory architecture
-- MPC-ready (Nillion framework)
-- Full CLI + Docker support
+- MPC-ready architecture
 
-**Quick start**:
 ```bash
 cd zulu-mpc-agent
 ./quickstart.sh
-zulu process audio.wav --title "Meeting"
 ```
-
-**Documentation**: [`docs/zulu-mpc-agent.md`](../docs/zulu-mpc-agent.md)
 
 ### `zulu-verification/`
-**Cryptographic integrity & verification engine** (TypeScript)
 
-- BLAKE3 hashing with Bao verified streaming
-- BIP-39 seed phrase generation
-- Ed25519 key infrastructure (BIP-44)
-- Deterministic chunking (MODEL = 1 MiB)
-- Per-chunk verification
-- Root commitments (SimpleConcatV1)
-- Adversarial tamper detection
+Integrity verification engine (TypeScript)
 
-**Quick start**:
+- BLAKE3 hashing
+- BIP-39 seed generation
+- Ed25519 key infrastructure
+- Deterministic chunking
+- Tamper detection
+
 ```bash
 cd zulu-verification
-npm run demo:attack    # See tamper detection in action
-npm run demo:keys      # Test key derivation
+npm run demo:attack
 ```
 
-**Documentation**: [`PRODUCTION_READY.md`](zulu-verification/PRODUCTION_READY.md)
+---
 
-## Runtime Data
+## Runtime data
 
-All runtime data is **local** and **ignored by git**:
-- `/agents/*/data/` - Session data
-- `/agents/*/storage/` - Encrypted vaults
-- `/agents/*/models/` - Downloaded models
-- `/agents/*/logs/` - Execution logs
+All runtime data is local and gitignored:
 
-**No user data, transcripts, or keys are ever committed.**
+- `*/data/` — Session data
+- `*/storage/` — Encrypted vaults
+- `*/models/` — Downloaded models
+- `*/logs/` — Execution logs
 
-## Architecture
+No user data, transcripts, or keys are committed.
 
-```
-agents/
-├── zulu-mpc-agent/          # Production AI agent
-│   ├── agent_core/
-│   │   ├── inference/       # Whisper, diarization
-│   │   ├── llm/             # Ollama, summarization
-│   │   ├── memory/          # SQLCipher vault
-│   │   ├── mpc/             # Nillion MPC
-│   │   └── pipelines/       # Orchestration
-│   └── data/                # (gitignored)
-│
-└── zulu-verification/       # Integrity engine
-    ├── src/
-    │   ├── crypto/          # BLAKE3, Ed25519
-    │   ├── chunking/        # Deterministic splitting
-    │   ├── storage/         # SQLCipher, keychain
-    │   └── trust/           # Policy engine
-    ├── examples/            # Executable proofs
-    └── dist/                # (generated)
-```
+---
 
-## For Contributors
+## Adding new agents
 
-See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for guidelines.
+Any agent can run inside Zulu if it:
 
-**We welcome**:
-- Inference speedups
-- Memory research
-- MPC experiments
-- UI improvements
+1. Respects execution policies
+2. Uses local-only storage
+3. Does not exfiltrate data
+4. Passes integrity verification
 
-**We reject**:
-- Cloud SaaS designs
-- Surveillance analytics
-- Data extraction shortcuts
-
-**ZULU is sacred. Not negotiable.**
+See the reference implementations for patterns.
