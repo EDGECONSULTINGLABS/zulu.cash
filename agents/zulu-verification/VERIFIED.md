@@ -29,7 +29,7 @@ Based on live demo output:
 
 ✅ **BIP-39 mnemonic generation** (12-word seed phrases)  
 ✅ **BIP-39 → seed derivation** (512-bit seeds)  
-✅ **BIP-44 path derivation** (m/44'/1337'/0'/0'/N)  
+✅ **BIP-44 path derivation** (m/44'/1337'/0'/N)  
 ✅ **Ed25519 keypair generation** (deterministic)  
 ✅ **Deterministic derivation** (different keys per index)  
 ✅ **Message signing** (Ed25519 signatures)  
@@ -106,7 +106,7 @@ This is not a claim. This is a **demonstrated fact**.
 | **Root Commitments** | ✅ Working | SimpleConcatV1 proven |
 | **Tamper Detection** | ✅ Working | 4/4 attacks caught |
 | **BIP-39 Seeds** | ✅ Working | 12-word generation |
-| **BIP-44 Derivation** | ✅ Working | m/44'/1337'/0'/0'/N |
+| **BIP-44 Derivation** | ✅ Working | m/44'/1337'/0'/N |
 | **Ed25519 Signing** | ✅ Working | Sign + verify |
 | **Build Pipeline** | ✅ Working | src/ → dist/ → examples/ |
 

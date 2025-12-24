@@ -89,7 +89,7 @@ async function keyDerivationTest() {
     console.log('\n✅ Validated:');
     console.log('   • BIP-39 mnemonic generation');
     console.log('   • BIP-39 seed derivation');
-    console.log('   • BIP-44 path derivation (m/44\'/1337\'/0\'/0/N)');
+    console.log('   • SLIP-0010 path derivation (m/44\'/1337\'/0\'/N\' - all hardened)');
     console.log('   • Ed25519 key pair generation');
     console.log('   • Deterministic key differences');
     console.log('   • Ed25519 message signing');
@@ -98,7 +98,7 @@ async function keyDerivationTest() {
     
     console.log('\n🔐 Cryptographic Stack Proven:');
     console.log('   • BIP-39 ✅');
-    console.log('   • BIP-44 ✅');
+    console.log('   • SLIP-0010 ✅');
     console.log('   • Ed25519 ✅');
     console.log('   • Deterministic derivation ✅');
     

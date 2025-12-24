@@ -67,7 +67,7 @@ describe('Ed25519 Key Derivation', () => {
     expect(key1.publicKey.equals(key2.publicKey)).toBe(true);
     expect(key1.privateKey.equals(key2.privateKey)).toBe(true);
     expect(key1.path).toBe(key2.path);
-    expect(key1.path).toBe("m/44'/1337'/0'/0/0");
+    expect(key1.path).toBe("m/44'/1337'/0'/0'");
   });
 
   test('derives different keys for different indices', async () => {

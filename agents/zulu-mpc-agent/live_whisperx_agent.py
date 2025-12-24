@@ -431,7 +431,7 @@ class ZuluLiveWhisperXMPC:
             try:
                 os.unlink(wav_path)
                 print(f"[*] Audio file deleted: {wav_path}")
-            except:
+            except OSError:
                 pass
 
         print("\n[OK] Processing complete!")

@@ -61,10 +61,10 @@ export async function deriveKeyPair(
   accountIndex = 0,
   keyIndex = 0
 ): Promise<Ed25519KeyPair> {
-  // BIP-44 path: m / purpose' / coin_type' / account' / change / address_index
+  // SLIP-0010 path for Ed25519: m / purpose' / coin_type' / account' / change' / address_index'
   // Using coin_type 1337 for Zulu
-  // Note: ed25519-hd-key uses "m/" prefix format
-  const path = `m/44'/1337'/${accountIndex}'/0'/${keyIndex}'`;
+  // Note: All indices must be hardened for Ed25519 (SLIP-0010), unlike BIP-44 for ECDSA
+  const path = `m/44'/1337'/${accountIndex}'/${keyIndex}'`;
 
   // derivePath expects hex-encoded seed string
   const { key } = derivePath(path, seed.toString('hex'));

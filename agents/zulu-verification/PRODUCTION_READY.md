@@ -28,7 +28,7 @@ The Zulu Verification System has successfully passed all validation tests and is
 |---------|--------|----------|
 | **BIP-39 Generation** | ✅ PROVEN | 12-word mnemonic created |
 | **BIP-39 Seed Derivation** | ✅ PROVEN | 512-bit seed derived |
-| **BIP-44 Path Derivation** | ✅ PROVEN | m/44'/1337'/0'/0'/N |
+| **BIP-44 Path Derivation** | ✅ PROVEN | m/44'/1337'/0'/N |
 | **Ed25519 Key Pairs** | ✅ PROVEN | Deterministic keys generated |
 | **Message Signing** | ✅ PROVEN | Signatures created |
 | **Signature Verification** | ✅ PROVEN | Valid/invalid detection |

@@ -13,7 +13,7 @@ Implemented a **production-ready verified streaming architecture** for Zulu usin
 | **Deterministic Chunking** | ✅ Complete | Adaptive sizes: MODEL 1MiB, MEMORY 64KiB, PLUGIN 256KiB, UI 512KiB |
 | **Root Commitment** | ✅ Complete | SimpleConcatV1 with BaoMerkleV2 API compatibility |
 | **BIP-39 Seeds** | ✅ Complete | 12-24 word generation with validation |
-| **Ed25519 Keys** | ✅ Complete | Deterministic derivation via m/44'/1337'/0'/0/N |
+| **Ed25519 Keys** | ✅ Complete | Deterministic derivation via m/44'/1337'/0'/N' (all hardened) |
 | **OS Keychain** | ✅ Complete | macOS/Windows/Linux support + SQLCipher fallback |
 | **Signed Receipts** | ✅ Complete | Content-addressed with SHA256 primary keys |
 | **SQLCipher Database** | ✅ Complete | Encrypted storage with proper indices |

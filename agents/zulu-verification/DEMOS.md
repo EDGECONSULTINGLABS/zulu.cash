@@ -64,7 +64,7 @@ npm run demo:all
 **What it proves**:
 - BIP-39 mnemonic generation
 - BIP-39 seed derivation
-- BIP-44 path derivation (m/44'/1337'/0'/0'/N)
+- SLIP-0010 path derivation (m/44'/1337'/0'/N' - all hardened)
 - Ed25519 key pair generation
 - Deterministic key differences
 - Ed25519 signing & verification
@@ -74,7 +74,7 @@ npm run demo:all
 ```
 🔑 Ed25519 Key Derivation Test
 ✅ BIP-39 ✅
-✅ BIP-44 ✅
+✅ SLIP-0010 ✅
 ✅ Ed25519 ✅
 ✅ Deterministic derivation ✅
 ```
@@ -88,7 +88,7 @@ npm run demo:all
 | **Streaming Verification** | ✅ Proven | Per-chunk validation |
 | **Root Commitment** | ✅ Proven | SimpleConcatV1 |
 | **Tamper Detection** | ✅ Proven | 4/4 attacks caught |
-| **Key Management** | ✅ Proven | BIP-39/44 + Ed25519 |
+| **Key Management** | ✅ Proven | BIP-39 + SLIP-0010 + Ed25519 |
 
 ## 📁 Repository Structure
 

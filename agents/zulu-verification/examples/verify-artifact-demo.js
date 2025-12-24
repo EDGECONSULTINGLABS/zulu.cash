@@ -29,7 +29,7 @@ async function demo() {
   console.log('\n2️⃣ Ed25519 KEY MANAGEMENT');
   console.log('─'.repeat(70));
   console.log(`✅ Ed25519 module loaded and ready`);
-  console.log(`   BIP-44 derivation path: m/44'/1337'/0'/0/N`);
+  console.log(`   SLIP-0010 derivation path: m/44'/1337'/0'/N' (all hardened)`);
   console.log(`   Supports: key generation, signing, verification`);
   console.log(`   Note: Full key derivation requires proper seed format`);
   
@@ -84,7 +84,7 @@ async function demo() {
   console.log('═'.repeat(70));
   console.log('\n✅ Demonstrated:');
   console.log('   • BIP-39 seed phrase generation');
-  console.log('   • Ed25519 key derivation (BIP-44)');
+  console.log('   • Ed25519 key derivation (SLIP-0010)');
   console.log('   • BLAKE3 hashing');
   console.log('   • Deterministic chunking (1 MiB for MODEL)');
   console.log('   • SimpleConcatV1 root commitment');

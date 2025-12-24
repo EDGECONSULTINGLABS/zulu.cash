@@ -3,7 +3,14 @@
  * Supports: macOS Keychain, Windows Credential Manager, Linux Secret Service
  */
 
-import * as keytar from 'keytar';
+let keytar: any;
+try {
+  keytar = require('keytar');
+} catch {
+  // keytar is optional - will use fallback adapter
+  keytar = undefined;
+}
+
 import { VerificationError, VerificationErrorCode } from '../types';
 
 const SERVICE_NAME = 'zulu.verification';
@@ -21,6 +28,9 @@ export interface KeychainAdapter {
 export class NativeKeychainAdapter implements KeychainAdapter {
   async store(key: string, value: string): Promise<void> {
     try {
+      if (!keytar) {
+        throw new Error('keytar is not available');
+      }
       await keytar.setPassword(SERVICE_NAME, key, value);
     } catch (error) {
       throw new VerificationError(
@@ -32,6 +42,9 @@ export class NativeKeychainAdapter implements KeychainAdapter {
 
   async retrieve(key: string): Promise<string | null> {
     try {
+      if (!keytar) {
+        throw new Error('keytar is not available');
+      }
       return await keytar.getPassword(SERVICE_NAME, key);
     } catch (error) {
       throw new VerificationError(
@@ -43,6 +56,9 @@ export class NativeKeychainAdapter implements KeychainAdapter {
 
   async delete(key: string): Promise<boolean> {
     try {
+      if (!keytar) {
+        throw new Error('keytar is not available');
+      }
       return await keytar.deletePassword(SERVICE_NAME, key);
     } catch (error) {
       throw new VerificationError(
@@ -54,8 +70,11 @@ export class NativeKeychainAdapter implements KeychainAdapter {
 
   async list(): Promise<string[]> {
     try {
+      if (!keytar) {
+        throw new Error('keytar is not available');
+      }
       const credentials = await keytar.findCredentials(SERVICE_NAME);
-      return credentials.map(c => c.account);
+      return credentials.map((c: { account: string; password: string }) => c.account);
     } catch (error) {
       throw new VerificationError(
         VerificationErrorCode.STORAGE_ERROR,
@@ -66,6 +85,9 @@ export class NativeKeychainAdapter implements KeychainAdapter {
 
   async isAvailable(): Promise<boolean> {
     try {
+      if (!keytar) {
+        return false;
+      }
       // Try to perform a simple operation to check availability
       await keytar.findCredentials(SERVICE_NAME);
       return true;

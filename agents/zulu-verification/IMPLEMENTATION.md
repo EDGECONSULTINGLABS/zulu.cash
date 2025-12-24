@@ -26,7 +26,7 @@
 
 **Key Management** ✅
 - BIP-39 seed phrase generation (12-24 words)
-- Deterministic Ed25519 key derivation (BIP-44 path: `m/44'/1337'/0'/0/N`)
+- Deterministic Ed25519 key derivation (SLIP-0010 path: `m/44'/1337'/0'/N'` - all hardened)
 - OS keychain integration:
   - macOS Keychain
   - Windows Credential Manager
@@ -334,7 +334,7 @@ zulu-verification/
 - ✅ BLAKE3 hashing (faster than SHA-2, cryptographically secure)
 - ✅ SQLCipher encryption (AES-256)
 - ✅ OS keychain integration (secure key storage)
-- ✅ BIP-39 + BIP-44 (industry-standard key derivation)
+- ✅ BIP-39 + SLIP-0010 (industry-standard key derivation)
 - ✅ Resume state integrity (prevents poisoned resume attacks)
 - ✅ Trust policy enforcement (STRICT/WARN/BEST_EFFORT)
 - ✅ Key expiration and revocation

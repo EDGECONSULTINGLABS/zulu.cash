@@ -201,7 +201,7 @@ Complete implementation of verified streaming architecture with BLAKE3.
 - ✅ BLAKE3 hashing (lamb356/blake3-optimized)
 - ✅ SimpleConcatV1 commitment
 - ✅ BIP-39 seed phrases (12-24 words)
-- ✅ Ed25519 key derivation (BIP-44 m/44'/1337'/0'/0/N)
+- ✅ Ed25519 key derivation (BIP-44 m/44'/1337'/0'/N' (all hardened))
 - ✅ OS keychain (macOS/Windows/Linux + fallback)
 - ✅ SQLCipher database with encryption
 - ✅ Content-addressed receipts
