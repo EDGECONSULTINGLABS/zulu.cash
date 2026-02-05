@@ -71,6 +71,7 @@ from zulu_openclaw_adapter import (
     ToolAllowlist,
     OpenClawError,
 )
+from datetime import datetime, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -722,13 +723,21 @@ class TaskExecutor:
             
             # Try OpenClaw first, fall back to direct LLM if unavailable
             try:
+                # Refresh credential timestamp before each dispatch to avoid TTL expiry
+                fresh_credentials = ScopedCredentials(
+                    llm_api_key=self.credentials.llm_api_key,
+                    llm_provider=self.credentials.llm_provider,
+                    issued_at=datetime.now(timezone.utc).isoformat(),
+                    extra=self.credentials.extra,
+                )
+                
                 request = OpenClawRequest(
                     task_id=f"{request_id}-{task.task_id}",
                     task_type=task.task_type,
                     prompt=prompt,
                     tool_allowlist=task.tool_allowlist,
                     domain_allowlist=task.domain_allowlist,
-                    credentials=self.credentials,
+                    credentials=fresh_credentials,
                     timeout_seconds=task.timeout_seconds,
                     context={"dependency_results": dep_context},
                 )
