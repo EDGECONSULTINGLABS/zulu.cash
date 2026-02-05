@@ -1,0 +1,108 @@
+# =============================================================================
+# Dockerfile.openclaw-nightshift — Real OpenClaw as NightShift Worker
+# =============================================================================
+# Installs the actual OpenClaw runtime from source.
+# Runs Pi (the coding agent) in headless single-shot mode.
+#
+# DISABLED AT CONTAINER LEVEL:
+#   - Gateway (WebSocket control plane) — not started
+#   - All messaging channels (WhatsApp, Telegram, Discord, iMessage)
+#   - Persistent sessions / memory — no state dir mounted writable
+#   - ClawHub skill registry — disabled via env + config
+#   - Canvas / A2UI — no canvas port exposed
+#   - Browser control (CDP) — no Chromium installed
+#   - Cron / scheduling — Zulu owns the clock
+#
+# KEPT:
+#   - Pi agent runtime (the actual LLM-powered execution engine)
+#   - Tool execution (web_search, web_fetch, text processing)
+#   - Structured output formatting
+#   - Our NightShift HTTP adapter wrapping Pi for single-shot tasks
+#
+# This is OpenClaw as a RUNTIME, not an AUTHORITY.
+# Zulu decides what runs. Pi executes. Workspace is wiped.
+# =============================================================================
+
+# --- Stage 1: Full OpenClaw build ---
+FROM node:22-bookworm AS builder
+
+# Bun is required by OpenClaw's build scripts
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+RUN corepack enable
+
+WORKDIR /build
+
+# Clone OpenClaw — pin to a specific commit/tag for reproducibility
+ARG OPENCLAW_REF=main
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch "${OPENCLAW_REF}" \
+        https://github.com/openclaw/openclaw.git . \
+    && pnpm install --frozen-lockfile \
+    && pnpm build
+
+# Build UI only if it exists (not required for headless)
+RUN pnpm ui:install 2>/dev/null && pnpm ui:build 2>/dev/null || true
+
+# --- Stage 2: Slim production image ---
+FROM node:22-bookworm-slim AS production
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user matching docker-compose uid:gid
+RUN groupadd -g 1003 nightshift \
+    && useradd -u 1003 -g nightshift -d /app -s /usr/sbin/nologin nightshift
+
+WORKDIR /app
+
+# ---- Copy OpenClaw built artifacts ----
+# dist/  — compiled JS (Gateway + Pi + CLI + tools)
+# node_modules/ — runtime deps
+# package.json — for Node resolution
+COPY --from=builder /build/dist          ./openclaw-dist/
+COPY --from=builder /build/node_modules  ./node_modules/
+COPY --from=builder /build/package.json  ./package.json
+
+# ---- Copy our NightShift adapter (the control surface) ----
+COPY nightshift-openclaw/ ./nightshift/
+
+# ---- Headless OpenClaw config — disables everything autonomous ----
+RUN mkdir -p /app/.openclaw \
+    && printf '%s\n' \
+       '{' \
+       '  "channels": {},' \
+       '  "messages": {},' \
+       '  "agents": {' \
+       '    "defaults": {' \
+       '      "sandbox": { "mode": "off" }' \
+       '    }' \
+       '  },' \
+       '  "gateway": { "enabled": false }' \
+       '}' \
+    > /app/.openclaw/openclaw.json
+
+# ---- Ephemeral directories ----
+RUN mkdir -p /app/workspace /app/output /app/logs \
+    && chown -R nightshift:nightshift /app
+
+USER nightshift
+
+# OpenClaw config path (so it doesn't try ~/.openclaw on the host)
+ENV OPENCLAW_CONFIG_PATH=/app/.openclaw/openclaw.json
+ENV OPENCLAW_STATE_DIR=/app/.openclaw
+ENV NODE_ENV=production
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=20s \
+    CMD curl -sf http://localhost:8090/health || exit 1
+
+# Our adapter, NOT `openclaw gateway`
+ENTRYPOINT ["node", "nightshift/server.mjs"]

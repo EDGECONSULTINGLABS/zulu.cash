@@ -1,0 +1,3 @@
+# Clawd Runner — minimal dependencies
+# NO SQLCipher, NO secrets libs, NO heavy ML libs
+aiohttp>=3.9.0

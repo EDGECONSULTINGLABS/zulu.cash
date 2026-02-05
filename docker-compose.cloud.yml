@@ -1,0 +1,43 @@
+# =============================================================================
+# Zulu Agent — Cloud Deployment (Minimal for 1 vCPU / 1GB RAM)
+# =============================================================================
+# Only runs telegram-gateway and clawd-runner (no Ollama, uses Claude API)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # CLAWD RUNNER — Lightweight Task Executor (runs first, on port 8080)
+  # ---------------------------------------------------------------------------
+  clawd-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.clawd
+    container_name: clawd-runner
+    restart: unless-stopped
+    network_mode: host
+
+    environment:
+      - CLAWD_ENV=production
+      - CLAWD_LISTEN_PORT=8080
+      - CLAWD_MAX_TASK_DURATION=300
+      - CLAWD_WORKSPACE=/app/workspace
+
+  # ---------------------------------------------------------------------------
+  # TELEGRAM GATEWAY — Bot Interface
+  # ---------------------------------------------------------------------------
+  telegram-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: telegram-gateway
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - clawd-runner
+
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CLAWD_URL=http://127.0.0.1:8080
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
+      - RATE_LIMIT_PER_MINUTE=10

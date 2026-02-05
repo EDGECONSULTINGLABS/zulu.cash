@@ -1,0 +1,28 @@
+# =============================================================================
+# Dockerfile.telegram — Telegram Gateway for Zulu NightShift
+# =============================================================================
+# Lightweight bot that forwards Telegram messages to NightShift worker.
+# No secrets access, no host volumes, user allowlist enforced.
+# =============================================================================
+
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 1004 telegram \
+    && useradd -u 1004 -g telegram -d /app -s /usr/sbin/nologin telegram
+
+WORKDIR /app
+
+COPY telegram_gateway/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY telegram_gateway/ ./
+
+RUN chown -R telegram:telegram /app
+
+USER telegram
+
+ENTRYPOINT ["python", "bot.py"]

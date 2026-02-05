@@ -1,0 +1,11 @@
+# OpenClaw NightShift Worker
+# This is a Node.js service — dependencies are in package.json
+# This file documents the Python-side expectations for the task contract
+#
+# The nightshift-openclaw container uses:
+#   - node:22-slim base image
+#   - pnpm for package management
+#   - OpenClaw core runtime (stripped)
+#   - Custom nightshift adapter (server.mjs)
+#
+# No Python dependencies required.

@@ -1,0 +1,11 @@
+# Zulu Core — main dependencies
+# This is a minimal set for the airlock demo
+# Full requirements should come from the main Zulu repo
+
+aiohttp>=3.9.0
+httpx>=0.25.0
+pydantic>=2.5.0
+sqlcipher3>=0.5.0
+python-dotenv>=1.0.0
+rich>=13.0.0
+click>=8.1.0

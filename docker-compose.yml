@@ -1,0 +1,446 @@
+# =============================================================================
+# ZULU.CASH — SECURE AIRLOCK DOCKER COMPOSE
+# =============================================================================
+# Architecture: Zulu decides. Clawd executes. Nothing else.
+#
+# Network topology:
+#   zulu_internal  — NO internet. Zulu core + Ollama + secrets vault only.
+#   clawd_dmz      — LIMITED internet. Clawd runner only. No host access.
+#   shared_bus     — Internal bridge for Zulu → Clawd task dispatch only.
+#
+# Secrets: Injected per-service via Docker secrets. Never in .env for prod.
+# Kill switch: clawd-watchdog monitors and terminates runaway tasks.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # ZULU CORE — Control Plane (NO INTERNET)
+  # ---------------------------------------------------------------------------
+  # The conductor. Owns the task queue, policy engine, secrets access.
+  # Only component that knows secrets exist.
+  # ---------------------------------------------------------------------------
+  zulu-core:
+    build:
+      context: .
+      dockerfile: Dockerfile.zulu
+    container_name: zulu-core
+    hostname: zulu-core
+    restart: unless-stopped
+
+    # SECURITY: Drop all capabilities, read-only root filesystem
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,noexec,nosuid
+      - /app/temp:size=50M,noexec,nosuid
+
+    # SECURITY: Non-root user
+    user: "1000:1000"
+
+    # Secrets — mounted read-only at /run/secrets/<name>
+    secrets:
+      - zulu_db_key
+      - hf_token
+      - nillion_api_key
+
+    environment:
+      - ZULU_ENV=production
+      - ZULU_DB_PATH=/app/data/zulu_agent.db
+      - ZULU_SECRETS_DIR=/run/secrets
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CLAWD_TASK_ENDPOINT=http://clawd-runner:8080/task
+      - OPENCLAW_TASK_ENDPOINT=http://openclaw-nightshift:8090/task
+      - TASK_TIMEOUT_SECONDS=300
+      - AUDIT_LOG_PATH=/app/logs/audit.jsonl
+
+    volumes:
+      - zulu-data:/app/data
+      - zulu-logs:/app/logs
+      - ./config:/app/config:ro
+
+    networks:
+      - zulu_internal
+      - shared_bus
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+
+  # ---------------------------------------------------------------------------
+  # OLLAMA — Local LLM Runtime (NO INTERNET)
+  # ---------------------------------------------------------------------------
+  # Runs inference locally. Same internal network as Zulu. No outside access.
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: zulu-ollama
+    hostname: ollama
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # Ollama needs these for GPU access
+      - SYS_RESOURCE
+
+    # NO ports exposed to host in production
+    # Uncomment for local dev only:
+    # ports:
+    #   - "127.0.0.1:11434:11434"
+
+    volumes:
+      - ollama-models:/root/.ollama
+
+    networks:
+      - zulu_internal
+      - inference_bus
+
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+          # GPU is optional — uncomment if NVIDIA drivers are available
+          # devices:
+          #   - driver: nvidia
+          #     count: 1
+          #     capabilities: [gpu]
+
+
+  # ---------------------------------------------------------------------------
+  # CLAWD RUNNER — Untrusted Executor (LIMITED INTERNET)
+  # ---------------------------------------------------------------------------
+  # Receives scoped tasks from Zulu. Can fetch external resources.
+  # Has NO access to: host filesystem, secrets vault, Zulu config, Docker socket.
+  # Dies and forgets after each task.
+  # ---------------------------------------------------------------------------
+  clawd-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.clawd
+    container_name: clawd-runner
+    hostname: clawd-runner
+    restart: unless-stopped
+
+    # SECURITY: Maximum lockdown
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=200M,noexec,nosuid
+      - /app/workspace:size=500M,noexec,nosuid
+
+    user: "1001:1001"
+
+    # Expose port for testing (remove in production)
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    # CRITICAL: No secrets mounted. No host volumes.
+    # Clawd gets task-scoped credentials via the task payload from Zulu.
+    environment:
+      - CLAWD_ENV=production
+      - CLAWD_LISTEN_PORT=8080
+      - CLAWD_MAX_TASK_DURATION=300
+      - CLAWD_MAX_MEMORY_MB=1024
+      - CLAWD_WORKSPACE=/app/workspace
+      # Clawd does NOT know about Zulu's secrets directory
+      # Clawd does NOT have ZULU_DB_KEY, HF_TOKEN, etc.
+
+    networks:
+      - clawd_dmz
+      - shared_bus
+
+    # SECURITY: Clawd's DNS is restricted in clawd_dmz network config
+    # Only approved external domains are reachable
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+
+  # ---------------------------------------------------------------------------
+  # OPENCLAW NIGHTSHIFT — Stripped Agent Worker (LIMITED INTERNET)
+  # ---------------------------------------------------------------------------
+  # Forked OpenClaw with Gateway, channels, memory, and autonomy DISABLED.
+  # Receives single-shot tasks from Zulu. Executes. Returns. Forgets.
+  # Same DMZ network as clawd-runner — treated with identical distrust.
+  # ---------------------------------------------------------------------------
+  openclaw-nightshift:
+    build:
+      context: .
+      dockerfile: Dockerfile.openclaw-nightshift
+    container_name: openclaw-nightshift
+    hostname: openclaw-nightshift
+    restart: unless-stopped
+
+    # SECURITY: Maximum lockdown — same as clawd-runner
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=200M,noexec,nosuid
+      - /app/workspace:size=500M,noexec,nosuid
+      - /app/output:size=100M,noexec,nosuid
+
+    user: "1003:1003"
+
+    # Expose port for testing (remove in production)
+    ports:
+      - "127.0.0.1:8090:8090"
+
+    # CRITICAL: No secrets. No host volumes. No Gateway.
+    environment:
+      - NIGHTSHIFT_PORT=8090
+      - NIGHTSHIFT_MAX_TASK_MS=300000
+      - NIGHTSHIFT_WORKSPACE=/app/workspace
+      - NIGHTSHIFT_OUTPUT=/app/output
+      - NODE_ENV=production
+      # Model routing: Ollama is default (runs local, no API key needed)
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - NIGHTSHIFT_DEFAULT_PROVIDER=ollama
+      - NIGHTSHIFT_DEFAULT_MODEL=llama3.1:8b
+      - OPENCLAW_DIST_PATH=/app/openclaw-dist
+      # OpenClaw headless config
+      - OPENCLAW_CONFIG_PATH=/app/.openclaw/openclaw.json
+      - OPENCLAW_STATE_DIR=/app/.openclaw
+      # OpenClaw-specific: DISABLE autonomous features
+      - OPENCLAW_GATEWAY=disabled
+      - OPENCLAW_CHANNELS=disabled
+      - OPENCLAW_MEMORY=disabled
+      - OPENCLAW_CLAWHUB=disabled
+      - OPENCLAW_CRON=disabled
+      - OPENCLAW_BROWSER=disabled
+
+    networks:
+      - clawd_dmz
+      - shared_bus
+      - inference_bus
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+
+  # ---------------------------------------------------------------------------
+  # TELEGRAM GATEWAY — Bot Interface (INTERNET ACCESS)
+  # ---------------------------------------------------------------------------
+  # Receives messages from Telegram, forwards to NightShift, returns responses.
+  # User allowlist enforced. No secrets access beyond bot token.
+  # ---------------------------------------------------------------------------
+  telegram-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: telegram-gateway
+    hostname: telegram-gateway
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M,noexec,nosuid
+
+    user: "1004:1004"
+
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CLAWD_URL=http://clawd-runner:8080
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
+      - RATE_LIMIT_PER_MINUTE=10
+
+    networks:
+      - shared_bus
+      - clawd_dmz  # Needs internet for Telegram API
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+
+  # ---------------------------------------------------------------------------
+  # CLAWD WATCHDOG — Kill Switch + Audit (NO INTERNET)
+  # ---------------------------------------------------------------------------
+  # Monitors clawd-runner. Kills tasks that exceed time/resource thresholds.
+  # Writes audit logs. This is the dead-man's switch for NightShift.
+  # ---------------------------------------------------------------------------
+  clawd-watchdog:
+    build:
+      context: .
+      dockerfile: Dockerfile.watchdog
+    container_name: clawd-watchdog
+    hostname: clawd-watchdog
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M,noexec,nosuid
+
+    # Run as root to access Docker socket (socket permissions require it)
+    user: "0:0"
+
+    environment:
+      - WATCHDOG_CLAWD_CONTAINER=clawd-runner
+      - WATCHDOG_OPENCLAW_CONTAINER=openclaw-nightshift
+      - WATCHDOG_MAX_TASK_SECONDS=300
+      - WATCHDOG_MAX_MEMORY_MB=1024
+      - WATCHDOG_MAX_CPU_PERCENT=90
+      - WATCHDOG_CHECK_INTERVAL=10
+      - WATCHDOG_AUDIT_LOG=/app/logs/watchdog-audit.jsonl
+      - WATCHDOG_KILL_ACTION=restart
+      - WATCHDOG_POLICY_PATH=/app/policy/policy.yaml
+      # Socket access is READ-ONLY for monitoring only
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - zulu-logs:/app/logs
+      - ./policy:/app/policy:ro
+
+    networks:
+      - zulu_internal
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+
+# =============================================================================
+# NETWORKS — Airlock Topology
+# =============================================================================
+networks:
+
+  # Zulu + Ollama only. Completely internal. No internet gateway.
+  zulu_internal:
+    driver: bridge
+    internal: true  # <-- THIS IS THE KEY: no external connectivity
+    ipam:
+      config:
+        - subnet: 172.31.1.0/24
+
+  # Clawd's external access. Restricted but not fully internal.
+  clawd_dmz:
+    driver: bridge
+    # NOT internal — Clawd can reach the internet, but only approved domains
+    # Use iptables/firewall rules or a proxy to restrict egress
+    ipam:
+      config:
+        - subnet: 172.31.2.0/24
+
+  # Zulu ↔ Clawd task dispatch only. Internal bridge.
+  shared_bus:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.3.0/24
+
+  # Ollama ↔ Workers inference bus. Internal bridge.
+  # Allows openclaw-nightshift to call Ollama for LLM inference
+  # without exposing it to zulu_internal (where secrets live).
+  inference_bus:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.4.0/24
+
+
+# =============================================================================
+# VOLUMES — Persistent Storage
+# =============================================================================
+volumes:
+  zulu-data:
+    driver: local
+  zulu-logs:
+    driver: local
+  ollama-models:
+    driver: local
+
+
+# =============================================================================
+# SECRETS — Docker Secrets (file-based for compose, swarm-native in prod)
+# =============================================================================
+# In development: create these files in ./secrets/
+# In production: use Docker Swarm secrets or an external vault
+# =============================================================================
+secrets:
+  zulu_db_key:
+    file: ./secrets/zulu_db_key.txt
+  hf_token:
+    file: ./secrets/hf_token.txt
+  nillion_api_key:
+    file: ./secrets/nillion_api_key.txt

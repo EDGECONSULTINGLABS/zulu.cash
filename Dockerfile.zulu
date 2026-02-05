@@ -1,0 +1,60 @@
+# =============================================================================
+# Dockerfile.zulu — Zulu Core (Control Plane)
+# =============================================================================
+# Multi-stage build. Minimal final image. Non-root. No shell in prod.
+# =============================================================================
+
+# --- Stage 1: Build dependencies ---
+FROM python:3.10-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libsqlcipher-dev \
+    libsndfile1-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+COPY . .
+RUN pip install --no-cache-dir --prefix=/install -e .
+
+
+# --- Stage 2: Production image ---
+FROM python:3.10-slim AS production
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsqlcipher0 \
+    libsndfile1 \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get purge -y --auto-remove
+
+# Create non-root user
+RUN groupadd -r zulu && useradd -r -g zulu -d /app -s /usr/sbin/nologin zulu
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+COPY --from=builder /build/agent_core ./agent_core
+COPY --from=builder /build/cli.py ./cli.py
+COPY --from=builder /build/setup.py ./setup.py
+
+# Create required directories (owned by zulu user)
+RUN mkdir -p /app/data /app/logs /app/temp /app/config \
+    && chown -R zulu:zulu /app
+
+USER zulu
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)"
+
+ENTRYPOINT ["python"]
+CMD ["cli.py", "serve"]

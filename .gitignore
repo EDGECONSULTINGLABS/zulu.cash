@@ -1,0 +1,26 @@
+# Secrets — NEVER commit
+secrets/
+*.key
+*.pem
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Data volumes
+data/
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,40 @@
+# =============================================================================
+# Dockerfile.clawd — Clawd Runner (Untrusted Executor)
+# =============================================================================
+# Minimal image. Receives scoped tasks. Dies and forgets.
+# NO secrets. NO host filesystem. NO persistent state.
+# =============================================================================
+
+FROM python:3.10-slim AS production
+
+# Install minimal runtime only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get purge -y --auto-remove
+
+# Create non-root clawd user (different UID from zulu)
+RUN groupadd -r clawd && useradd -r -g clawd -d /app -s /usr/sbin/nologin clawd
+
+WORKDIR /app
+
+# Install only what Clawd needs — no SQLCipher, no secrets libs
+COPY requirements.clawd.txt .
+RUN pip install --no-cache-dir -r requirements.clawd.txt
+
+# Copy only the runner code — NOT the full agent_core
+COPY clawd_runner/ ./clawd_runner/
+
+# Create ephemeral workspace
+RUN mkdir -p /app/workspace \
+    && chown -R clawd:clawd /app
+
+USER clawd
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+    CMD curl -sf http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["python", "-m", "clawd_runner.server"]

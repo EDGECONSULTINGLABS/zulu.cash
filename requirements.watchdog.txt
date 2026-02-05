@@ -1,0 +1,4 @@
+# Watchdog — Docker SDK + hardening dependencies
+docker>=7.0.0
+blake3>=0.4.0
+pyyaml>=6.0

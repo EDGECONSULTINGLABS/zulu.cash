@@ -1,0 +1,31 @@
+# =============================================================================
+# Dockerfile.watchdog — Clawd Watchdog (Kill Switch + Audit)
+# =============================================================================
+# Monitors clawd-runner. Kills runaway tasks. Writes audit logs.
+# Only container with Docker socket access (READ-ONLY).
+# =============================================================================
+
+FROM python:3.10-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r watchdog && useradd -r -g watchdog -d /app -s /usr/sbin/nologin watchdog
+# Add watchdog user to docker group for socket access
+RUN groupadd -f docker && usermod -aG docker watchdog
+
+WORKDIR /app
+
+COPY requirements.watchdog.txt .
+RUN pip install --no-cache-dir -r requirements.watchdog.txt
+
+COPY watchdog/ ./watchdog/
+COPY hardening/ ./hardening/
+COPY cli/ ./cli/
+
+RUN mkdir -p /app/logs /app/policy && chown -R watchdog:watchdog /app
+
+USER watchdog
+
+ENTRYPOINT ["python", "-m", "watchdog.monitor"]

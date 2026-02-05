@@ -1,0 +1,74 @@
+# =============================================================================
+# ZULU AIRLOCK POLICY — Governance as Code
+# =============================================================================
+# This file defines runtime constraints for all workers.
+# Mounted read-only into the watchdog container.
+#
+# Change this file → watchdog enforces on next check cycle.
+# No redeploy required.
+#
+# BLAKE3 fingerprint of this file is logged at every policy load
+# and chained into the immutable audit log.
+# =============================================================================
+
+version: "1.0"
+
+# ---------------------------------------------------------------------------
+# Per-worker rules
+# ---------------------------------------------------------------------------
+workers:
+
+  clawd-runner:
+    # Maximum single-task runtime (seconds)
+    max_runtime_sec: 300
+    # CPU threshold — 3 consecutive checks above this triggers kill
+    max_cpu_pct: 90
+    # Memory hard limit — immediate kill
+    max_memory_mb: 1024
+    # Must complete startup attestation before receiving tasks
+    require_attestation: true
+    # Allowed filesystem paths (read/write)
+    allow_filesystem:
+      - /tmp
+      - /app/workspace
+    # Network controls (advisory — real enforcement at Docker network level)
+    deny_outbound: false
+    deny_dns: false
+    # Syscalls to deny (advisory — requires seccomp profile for enforcement)
+    deny_syscalls:
+      - mount
+      - ptrace
+      - keyctl
+
+  openclaw-nightshift:
+    max_runtime_sec: 300
+    max_cpu_pct: 90
+    # OpenClaw gets more memory (LLM processing)
+    max_memory_mb: 2048
+    require_attestation: true
+    allow_filesystem:
+      - /tmp
+      - /app/workspace
+      - /app/output
+    deny_outbound: false
+    deny_dns: false
+    deny_syscalls:
+      - mount
+      - ptrace
+      - keyctl
+      - kexec_load
+
+# ---------------------------------------------------------------------------
+# Global rules
+# ---------------------------------------------------------------------------
+global:
+  # Kill containers on policy violation (vs. warn-only)
+  kill_on_violation: true
+  # Kill containers not listed in workers (rogue containers)
+  kill_unknown_workers: false
+  # Max concurrent tasks across all workers
+  max_concurrent_tasks: 5
+  # Log every check cycle (verbose — disable in production)
+  audit_all_checks: false
+  # Policy reload interval (seconds) — watchdog checks for changes
+  policy_reload_interval: 60
