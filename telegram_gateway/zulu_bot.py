@@ -48,7 +48,7 @@ from zulu_openclaw_adapter import ScopedCredentials
 # Configuration
 # ---------------------------------------------------------------------------
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CLAWD_URL = os.environ.get("CLAWD_URL", "http://clawd-runner:8080")
+CLAWD_URL = os.environ.get("CLAWD_URL", "http://localhost:8080")
 ALLOWED_USERS = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "10"))
 
