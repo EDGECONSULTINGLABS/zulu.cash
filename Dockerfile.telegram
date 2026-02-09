@@ -21,8 +21,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY telegram_gateway/ ./
 
+# Copy parent Zulu modules needed by zulu_bot.py
+COPY zulu_task_planner.py /app/zulu_task_planner.py
+COPY zulu_model_provider.py /app/zulu_model_provider.py
+COPY zulu_openclaw_adapter.py /app/zulu_openclaw_adapter.py
+COPY zulu_moltworker_adapter.py /app/zulu_moltworker_adapter.py
+
 RUN chown -R telegram:telegram /app
 
 USER telegram
 
-ENTRYPOINT ["python", "bot.py"]
+ENTRYPOINT ["python", "zulu_bot.py"]
