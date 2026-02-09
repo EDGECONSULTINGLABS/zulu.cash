@@ -20,7 +20,6 @@ import time
 from datetime import datetime, timezone
 
 import httpx
-import websockets
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -225,85 +224,58 @@ async def send_to_claude(message: str, user_id: int, image_data: str = None, ima
             return {"status": "error", "error": str(e)}
 
 # ---------------------------------------------------------------------------
-# MoltWorker WebSocket dispatch
+# MoltWorker HTTP task dispatch
 # ---------------------------------------------------------------------------
 async def send_to_moltworker(message: str, user_id: int) -> dict:
-    """Send a message to MoltWorker via WebSocket and collect streamed response."""
+    """Send a message to MoltWorker via HTTP /api/task endpoint."""
     if not MOLTWORKER_URL or not MOLTWORKER_GATEWAY_TOKEN:
         return {"status": "error", "error": "MoltWorker not configured"}
 
     task_id = f"tg-{user_id}-{int(time.time())}"
-    log.info(f"Sending task {task_id} to MoltWorker: {MOLTWORKER_URL}")
+    task_url = f"{MOLTWORKER_URL.rstrip('/')}/api/task"
+    log.info(f"Sending task {task_id} to MoltWorker: {task_url}")
 
-    # Build WebSocket URL
-    ws_scheme = "wss" if MOLTWORKER_URL.startswith("https") else "ws"
-    base = MOLTWORKER_URL.replace("https://", "").replace("http://", "")
-    ws_url = f"{ws_scheme}://{base}/?token={MOLTWORKER_GATEWAY_TOKEN}"
-
-    # CF Access headers for service token auth
-    extra_headers = {}
+    headers = {"Content-Type": "application/json"}
     if CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET:
-        extra_headers["CF-Access-Client-Id"] = CF_ACCESS_CLIENT_ID
-        extra_headers["CF-Access-Client-Secret"] = CF_ACCESS_CLIENT_SECRET
+        headers["CF-Access-Client-Id"] = CF_ACCESS_CLIENT_ID
+        headers["CF-Access-Client-Secret"] = CF_ACCESS_CLIENT_SECRET
 
-    collected = []
-    conversation_id = f"zulu-{task_id}"
+    payload = {
+        "message": message,
+        "timeout": MOLTWORKER_TIMEOUT * 1000,  # ms
+        "session_id": f"zulu-{user_id}",
+    }
 
-    try:
-        async with websockets.connect(
-            ws_url,
-            additional_headers=extra_headers,
-            open_timeout=30,
-            close_timeout=10,
-        ) as ws:
-            # Send the message
-            await ws.send(json.dumps({
-                "type": "message",
-                "content": message,
-                "conversationId": conversation_id,
-            }))
+    async with httpx.AsyncClient(timeout=float(MOLTWORKER_TIMEOUT + 30)) as client:
+        try:
+            resp = await client.post(task_url, json=payload, headers=headers)
 
-            log.info(f"Task {task_id}: sent to MoltWorker, awaiting response...")
+            if resp.status_code != 200:
+                log.error(f"Task {task_id}: MoltWorker HTTP {resp.status_code}: {resp.text[:200]}")
+                return {"status": "error", "error": f"MoltWorker HTTP {resp.status_code}"}
 
-            # Collect streamed response with timeout
-            deadline = time.monotonic() + MOLTWORKER_TIMEOUT
+            result = resp.json()
+            log.info(f"Task {task_id}: MoltWorker response status={result.get('status')}")
 
-            async for raw in ws:
-                if time.monotonic() > deadline:
-                    log.warning(f"Task {task_id}: timeout after {MOLTWORKER_TIMEOUT}s")
-                    return {"status": "timeout", "error": f"Timed out after {MOLTWORKER_TIMEOUT}s"}
+            # Normalize response to match expected format
+            if result.get("status") == "completed":
+                agent_result = result.get("result", {})
+                content = (
+                    agent_result.get("content") or
+                    agent_result.get("summary") or
+                    agent_result.get("text") or
+                    json.dumps(agent_result)
+                )
+                return {"status": "completed", "result": {"summary": content}}
 
-                try:
-                    data = json.loads(raw)
-                except json.JSONDecodeError:
-                    collected.append(str(raw))
-                    continue
+            return result
 
-                msg_type = data.get("type", "")
-
-                if msg_type == "content_delta":
-                    collected.append(data.get("delta", ""))
-                elif msg_type == "message_end":
-                    break
-                elif msg_type == "error":
-                    err = data.get("error", {})
-                    err_msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-                    return {"status": "error", "error": err_msg}
-                # message_start, tool_use, tool_result — just continue
-
-        full_content = "".join(collected)
-        if not full_content:
-            return {"status": "error", "error": "Empty response from MoltWorker"}
-
-        log.info(f"Task {task_id}: MoltWorker response received ({len(full_content)} chars)")
-        return {"status": "completed", "result": {"summary": full_content}}
-
-    except websockets.exceptions.InvalidStatusCode as e:
-        log.error(f"Task {task_id}: WebSocket handshake failed: {e}")
-        return {"status": "error", "error": f"MoltWorker connection failed: {e}"}
-    except Exception as e:
-        log.error(f"Task {task_id}: MoltWorker error: {e}")
-        return {"status": "error", "error": f"MoltWorker error: {e}"}
+        except httpx.TimeoutException:
+            log.error(f"Task {task_id}: MoltWorker timeout after {MOLTWORKER_TIMEOUT}s")
+            return {"status": "timeout", "error": f"Timed out after {MOLTWORKER_TIMEOUT}s"}
+        except Exception as e:
+            log.error(f"Task {task_id}: MoltWorker error: {e}")
+            return {"status": "error", "error": f"MoltWorker error: {e}"}
 
 
 # ---------------------------------------------------------------------------
