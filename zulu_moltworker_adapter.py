@@ -205,7 +205,6 @@ class ZuluMoltWorkerAdapter:
                     config = get_moltworker_config()
                     timeout = aiohttp.ClientTimeout(
                         connect=config.connection_timeout,
-                        ws_close=10,
                     )
                     headers = {}
                     # Add CF Access service token headers if configured
