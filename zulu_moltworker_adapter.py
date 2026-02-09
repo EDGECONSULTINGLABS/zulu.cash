@@ -399,7 +399,7 @@ class ZuluMoltWorkerAdapter:
                     "conversationId": conversation_id,
                 })
 
-                log.info(f"Task {request.task_id}: sent to MoltWorker, awaiting response...")
+                log.info(f"Task {request.task_id}: sent to MoltWorker via {ws_url[:60]}..., awaiting response...")
 
                 # Collect response with timeout
                 deadline = time.monotonic() + request.timeout_seconds
@@ -411,6 +411,8 @@ class ZuluMoltWorkerAdapter:
                         status = "timeout"
                         error_message = f"Task exceeded {request.timeout_seconds}s limit"
                         break
+
+                    log.info(f"Task {request.task_id}: ws msg type={msg.type}, data={str(msg.data)[:200]}")
 
                     if msg.type == aiohttp.WSMsgType.TEXT:
                         try:
@@ -464,6 +466,7 @@ class ZuluMoltWorkerAdapter:
                         break
 
                     elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
+                        log.warning(f"Task {request.task_id}: ws closed, complete={message_complete}, content_len={len(collected_content)}, close_code={getattr(ws, 'close_code', None)}")
                         if not message_complete and not collected_content:
                             error_message = "WebSocket closed before response"
                             status = "error"
