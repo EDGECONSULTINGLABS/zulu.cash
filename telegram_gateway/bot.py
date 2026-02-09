@@ -255,7 +255,7 @@ async def send_to_moltworker(message: str, user_id: int) -> dict:
                 return {"status": "error", "error": f"MoltWorker HTTP {resp.status_code}"}
 
             result = resp.json()
-            log.info(f"Task {task_id}: MoltWorker response status={result.get('status')}")
+            log.info(f"Task {task_id}: MoltWorker HTTP {resp.status_code}, body={json.dumps(result)[:500]}")
 
             # Normalize response to match expected format
             if result.get("status") == "completed":
