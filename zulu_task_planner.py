@@ -71,6 +71,15 @@ from zulu_openclaw_adapter import (
     ToolAllowlist,
     OpenClawError,
 )
+
+# MoltWorker adapter — same dispatch() contract, different backend
+try:
+    from zulu_moltworker_adapter import ZuluMoltWorkerAdapter
+except ImportError:
+    ZuluMoltWorkerAdapter = None  # Optional dependency
+
+# Union type for any adapter that implements dispatch()
+AdapterType = ZuluOpenClawAdapter  # Base type; MoltWorker is duck-type compatible
 from datetime import datetime, timezone
 
 logging.basicConfig(
@@ -636,11 +645,11 @@ Extract the most relevant information for the dependent task."""
 # Task executor
 # ---------------------------------------------------------------------------
 class TaskExecutor:
-    """Executes task graphs through OpenClaw adapter."""
+    """Executes task graphs through OpenClaw or MoltWorker adapter."""
     
     def __init__(
         self,
-        adapter: ZuluOpenClawAdapter,
+        adapter,  # ZuluOpenClawAdapter or ZuluMoltWorkerAdapter (duck-typed)
         credentials: ScopedCredentials,
         extractor: ResultExtractor,
         config: PlannerConfig,
@@ -901,13 +910,13 @@ class ZuluTaskPlanner:
         provider: ModelProvider,
         model_config: ModelConfig,
         execution_credentials: ScopedCredentials,
-        adapter: Optional[ZuluOpenClawAdapter] = None,
+        adapter = None,  # ZuluOpenClawAdapter or ZuluMoltWorkerAdapter (duck-typed)
         planner_config: Optional[PlannerConfig] = None,
     ):
         self.provider = provider
         self.model_config = model_config
         self.execution_credentials = execution_credentials
-        self.adapter = adapter or ZuluOpenClawAdapter()
+        self.adapter = adapter or _create_default_adapter()
         self.config = planner_config or PlannerConfig.from_env()
         
         self.intent_parser = IntentParser(provider, model_config.intent_model)
@@ -1002,6 +1011,32 @@ class ZuluTaskPlanner:
         """Clean up resources."""
         await self.adapter.close()
         await self.provider.close()
+
+
+# ---------------------------------------------------------------------------
+# Adapter factory — auto-selects MoltWorker or local OpenClaw
+# ---------------------------------------------------------------------------
+def _create_default_adapter():
+    """
+    Create the appropriate execution adapter based on environment config.
+    
+    If MOLTWORKER_URL is set → use MoltWorker (Cloudflare) as backend.
+    Otherwise → use local OpenClaw NightShift container.
+    """
+    moltworker_url = os.getenv("MOLTWORKER_URL", "")
+    
+    if moltworker_url and ZuluMoltWorkerAdapter is not None:
+        log.info(f"Using MoltWorker backend: {moltworker_url}")
+        return ZuluMoltWorkerAdapter(moltworker_url=moltworker_url)
+    
+    if moltworker_url and ZuluMoltWorkerAdapter is None:
+        log.warning(
+            "MOLTWORKER_URL is set but zulu_moltworker_adapter is not available. "
+            "Falling back to local OpenClaw adapter."
+        )
+    
+    log.info("Using local OpenClaw NightShift adapter")
+    return ZuluOpenClawAdapter()
 
 
 # ---------------------------------------------------------------------------
