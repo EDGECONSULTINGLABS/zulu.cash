@@ -20,6 +20,7 @@ import time
 from datetime import datetime, timezone
 
 import httpx
+import websockets
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -28,10 +29,18 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # ---------------------------------------------------------------------------
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CLAWD_URL = os.environ.get("CLAWD_URL", "http://clawd-runner:8080")
+CLAWD_AUTH_TOKEN = os.environ.get("CLAWD_AUTH_TOKEN", "")
 NIGHTSHIFT_URL = os.environ.get("NIGHTSHIFT_URL", "http://openclaw-nightshift:8090")
 ALLOWED_USERS = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "10"))
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "llama3.2:1b")
+
+# MoltWorker (Cloudflare) configuration
+MOLTWORKER_URL = os.environ.get("MOLTWORKER_URL", "")
+MOLTWORKER_GATEWAY_TOKEN = os.environ.get("MOLTWORKER_GATEWAY_TOKEN", "")
+CF_ACCESS_CLIENT_ID = os.environ.get("CF_ACCESS_CLIENT_ID", "")
+CF_ACCESS_CLIENT_SECRET = os.environ.get("CF_ACCESS_CLIENT_SECRET", "")
+MOLTWORKER_TIMEOUT = int(os.environ.get("MOLTWORKER_TIMEOUT", "120"))
 
 # Rate limiting state
 user_requests: dict[int, list[float]] = {}
@@ -122,9 +131,13 @@ async def send_to_clawd(message: str, user_id: int) -> dict:
     
     log.info(f"Sending task {task_id} ({payload['task_type']}) to clawd-runner")
     
+    headers = {}
+    if CLAWD_AUTH_TOKEN:
+        headers["Authorization"] = f"Bearer {CLAWD_AUTH_TOKEN}"
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            resp = await client.post(f"{CLAWD_URL}/task", json=payload)
+            resp = await client.post(f"{CLAWD_URL}/task", json=payload, headers=headers)
             result = resp.json()
             log.info(f"Task {task_id} completed: {result.get('status')}")
             return result
@@ -212,6 +225,88 @@ async def send_to_claude(message: str, user_id: int, image_data: str = None, ima
             return {"status": "error", "error": str(e)}
 
 # ---------------------------------------------------------------------------
+# MoltWorker WebSocket dispatch
+# ---------------------------------------------------------------------------
+async def send_to_moltworker(message: str, user_id: int) -> dict:
+    """Send a message to MoltWorker via WebSocket and collect streamed response."""
+    if not MOLTWORKER_URL or not MOLTWORKER_GATEWAY_TOKEN:
+        return {"status": "error", "error": "MoltWorker not configured"}
+
+    task_id = f"tg-{user_id}-{int(time.time())}"
+    log.info(f"Sending task {task_id} to MoltWorker: {MOLTWORKER_URL}")
+
+    # Build WebSocket URL
+    ws_scheme = "wss" if MOLTWORKER_URL.startswith("https") else "ws"
+    base = MOLTWORKER_URL.replace("https://", "").replace("http://", "")
+    ws_url = f"{ws_scheme}://{base}/?token={MOLTWORKER_GATEWAY_TOKEN}"
+
+    # CF Access headers for service token auth
+    extra_headers = {}
+    if CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET:
+        extra_headers["CF-Access-Client-Id"] = CF_ACCESS_CLIENT_ID
+        extra_headers["CF-Access-Client-Secret"] = CF_ACCESS_CLIENT_SECRET
+
+    collected = []
+    conversation_id = f"zulu-{task_id}"
+
+    try:
+        async with websockets.connect(
+            ws_url,
+            additional_headers=extra_headers,
+            open_timeout=30,
+            close_timeout=10,
+        ) as ws:
+            # Send the message
+            await ws.send(json.dumps({
+                "type": "message",
+                "content": message,
+                "conversationId": conversation_id,
+            }))
+
+            log.info(f"Task {task_id}: sent to MoltWorker, awaiting response...")
+
+            # Collect streamed response with timeout
+            deadline = time.monotonic() + MOLTWORKER_TIMEOUT
+
+            async for raw in ws:
+                if time.monotonic() > deadline:
+                    log.warning(f"Task {task_id}: timeout after {MOLTWORKER_TIMEOUT}s")
+                    return {"status": "timeout", "error": f"Timed out after {MOLTWORKER_TIMEOUT}s"}
+
+                try:
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    collected.append(str(raw))
+                    continue
+
+                msg_type = data.get("type", "")
+
+                if msg_type == "content_delta":
+                    collected.append(data.get("delta", ""))
+                elif msg_type == "message_end":
+                    break
+                elif msg_type == "error":
+                    err = data.get("error", {})
+                    err_msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                    return {"status": "error", "error": err_msg}
+                # message_start, tool_use, tool_result — just continue
+
+        full_content = "".join(collected)
+        if not full_content:
+            return {"status": "error", "error": "Empty response from MoltWorker"}
+
+        log.info(f"Task {task_id}: MoltWorker response received ({len(full_content)} chars)")
+        return {"status": "completed", "result": {"summary": full_content}}
+
+    except websockets.exceptions.InvalidStatusCode as e:
+        log.error(f"Task {task_id}: WebSocket handshake failed: {e}")
+        return {"status": "error", "error": f"MoltWorker connection failed: {e}"}
+    except Exception as e:
+        log.error(f"Task {task_id}: MoltWorker error: {e}")
+        return {"status": "error", "error": f"MoltWorker error: {e}"}
+
+
+# ---------------------------------------------------------------------------
 # Telegram handlers
 # ---------------------------------------------------------------------------
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -285,10 +380,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Try clawd-runner first (for /fetch, /transform, ping)
     result = await send_to_clawd(message, user.id)
     
-    # If clawd returned None, route to Claude for LLM response
+    # If clawd returned None, route to MoltWorker (if configured) or Claude API
     if result is None:
-        log.info("Routing to Claude API for LLM response")
-        result = await send_to_claude(message, user.id)
+        if MOLTWORKER_URL and MOLTWORKER_GATEWAY_TOKEN:
+            log.info("Routing to MoltWorker for LLM response")
+            result = await send_to_moltworker(message, user.id)
+            # Fall back to Claude if MoltWorker fails
+            if result.get("status") == "error":
+                log.warning(f"MoltWorker failed: {result.get('error')}, falling back to Claude")
+                result = await send_to_claude(message, user.id)
+        else:
+            log.info("Routing to Claude API for LLM response")
+            result = await send_to_claude(message, user.id)
         
         # Format NightShift response
         if result.get("status") == "completed":
@@ -648,6 +751,8 @@ def main():
     log.info("=" * 60)
     log.info("Telegram Gateway for Zulu Clawd-Runner")
     log.info(f"  Clawd URL: {CLAWD_URL}")
+    log.info(f"  MoltWorker: {MOLTWORKER_URL or 'not configured'}")
+    log.info(f"  CF Access: {'configured' if CF_ACCESS_CLIENT_ID else 'not configured'}")
     log.info(f"  Allowed users: {ALLOWED_USERS}")
     log.info(f"  Rate limit: {RATE_LIMIT_PER_MINUTE}/min")
     log.info("=" * 60)
