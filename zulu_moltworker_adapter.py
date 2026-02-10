@@ -33,6 +33,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional, Callable
@@ -124,27 +125,31 @@ def get_moltworker_config() -> MoltWorkerConfig:
 
 
 # ---------------------------------------------------------------------------
-# WebSocket message types (OpenClaw Gateway protocol)
+# WebSocket frame types (OpenClaw Gateway RPC protocol)
 # ---------------------------------------------------------------------------
-# The OpenClaw Gateway communicates via JSON messages over WebSocket.
-# Key message types:
-#   Client → Server:
-#     { "type": "message", "content": "...", "conversationId": "..." }
-#   Server → Client:
-#     { "type": "message_start", "messageId": "..." }
-#     { "type": "content_delta", "delta": "..." }
-#     { "type": "message_end", "messageId": "..." }
-#     { "type": "error", "error": { "message": "..." } }
-#     { "type": "tool_use", "tool": "...", "input": {...} }
-#     { "type": "tool_result", "result": "..." }
+# The OpenClaw Gateway uses a JSON RPC protocol over WebSocket:
+#
+# Frame types:
+#   Request:  { "type": "req",   "id": string, "method": string, "params": object }
+#   Response: { "type": "res",   "id": string, "ok": boolean, "payload"?: any, "error"?: any }
+#   Event:    { "type": "event", "event": string, "payload": any, "seq"?: number }
+#
+# Core methods:
+#   connect — handshake with auth
+#   agent   — run agent turn (returns runId, streams events)
+#   send    — send message to channel
+#
+# Agent events (streamed after "agent" request):
+#   agent.text.delta  — text chunk
+#   agent.text.done   — text complete
+#   agent.tool.start  — tool invocation started
+#   agent.tool.done   — tool invocation complete
+#   agent.turn.done   — agent turn complete
+#   agent.error       — agent error
 
-MSG_TYPE_MESSAGE = "message"
-MSG_TYPE_MESSAGE_START = "message_start"
-MSG_TYPE_CONTENT_DELTA = "content_delta"
-MSG_TYPE_MESSAGE_END = "message_end"
-MSG_TYPE_ERROR = "error"
-MSG_TYPE_TOOL_USE = "tool_use"
-MSG_TYPE_TOOL_RESULT = "tool_result"
+FRAME_REQ = "req"
+FRAME_RES = "res"
+FRAME_EVENT = "event"
 
 
 # ---------------------------------------------------------------------------
@@ -441,11 +446,16 @@ class ZuluMoltWorkerAdapter:
                         elapsed_seconds=round(time.monotonic() - start_time, 2),
                     )
 
-                # Send the task as a chat message
+                # Send agent request using RPC protocol
+                req_id = str(uuid.uuid4())[:8]
                 await ws.send_json({
-                    "type": MSG_TYPE_MESSAGE,
-                    "content": prompt,
-                    "conversationId": conversation_id,
+                    "type": FRAME_REQ,
+                    "id": req_id,
+                    "method": "agent",
+                    "params": {
+                        "message": prompt,
+                        "session": conversation_id,
+                    },
                 })
 
                 log.info(f"Task {request.task_id}: sent to MoltWorker via {ws_url[:60]}..., awaiting response...")
@@ -467,54 +477,65 @@ class ZuluMoltWorkerAdapter:
                         try:
                             data = json.loads(msg.data)
                         except json.JSONDecodeError:
-                            # Non-JSON message, treat as raw content
                             collected_content.append(msg.data)
                             continue
 
-                        msg_type = data.get("type", "")
-                        # Handle event wrapper: {"type":"event","event":"..."}
-                        if msg_type == "event":
+                        frame_type = data.get("type", "")
+
+                        if frame_type == FRAME_EVENT:
                             event_name = data.get("event", "")
-                            if event_name == "health":
+                            payload = data.get("payload", {})
+
+                            if event_name == "agent.text.delta":
+                                delta = payload.get("delta", "") if isinstance(payload, dict) else str(payload)
+                                collected_content.append(delta)
+
+                            elif event_name == "agent.text.done":
+                                # Full text available in payload
+                                text = payload.get("text", "") if isinstance(payload, dict) else str(payload)
+                                if text and not collected_content:
+                                    collected_content.append(text)
+
+                            elif event_name == "agent.turn.done":
+                                message_complete = True
+                                break
+
+                            elif event_name == "agent.tool.start":
+                                steps_taken += 1
+                                tool_name = payload.get("tool", "unknown") if isinstance(payload, dict) else "unknown"
+                                log.debug(f"Task {request.task_id}: tool_use tool={tool_name} step={steps_taken}")
+
+                            elif event_name == "agent.tool.done":
+                                pass  # Tool completed, content may follow
+
+                            elif event_name == "agent.error":
+                                err_msg = payload.get("message", str(payload)) if isinstance(payload, dict) else str(payload)
+                                error_message = err_msg
+                                status = "error"
+                                error_code = self._categorize_error(error_message)
+                                break
+
+                            elif event_name == "health":
                                 continue  # Skip health pings
-                            log.debug(f"Task {request.task_id}: event: {event_name}")
-                            continue
 
-                        if msg_type == MSG_TYPE_CONTENT_DELTA:
-                            delta = data.get("delta", "")
-                            collected_content.append(delta)
+                            else:
+                                log.debug(f"Task {request.task_id}: unknown event: {event_name}")
 
-                        elif msg_type == MSG_TYPE_MESSAGE_END:
-                            message_complete = True
-                            break
-
-                        elif msg_type == MSG_TYPE_TOOL_USE:
-                            steps_taken += 1
-                            log.debug(
-                                f"Task {request.task_id}: tool_use "
-                                f"tool={data.get('tool')} step={steps_taken}"
-                            )
-
-                        elif msg_type == MSG_TYPE_TOOL_RESULT:
-                            # Tool completed, content may follow
-                            pass
-
-                        elif msg_type == MSG_TYPE_ERROR:
-                            err = data.get("error", {})
-                            error_message = err.get("message", str(err))
-                            status = "error"
-                            error_code = self._categorize_error(error_message)
-                            break
-
-                        elif msg_type == MSG_TYPE_MESSAGE_START:
-                            # Response starting, reset content
-                            pass
+                        elif frame_type == FRAME_RES:
+                            # Response to our request
+                            if not data.get("ok", False):
+                                err = data.get("error", {})
+                                error_message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                                status = "error"
+                                error_code = self._categorize_error(error_message)
+                                log.error(f"Task {request.task_id}: agent request rejected: {error_message}")
+                                break
+                            else:
+                                # Agent request accepted, events will follow
+                                log.info(f"Task {request.task_id}: agent request accepted")
 
                         else:
-                            # Unknown message type — log but don't fail
-                            log.debug(
-                                f"Task {request.task_id}: unknown ws msg type: {msg_type}"
-                            )
+                            log.debug(f"Task {request.task_id}: unknown frame type: {frame_type}")
 
                     elif msg.type == aiohttp.WSMsgType.ERROR:
                         error_message = f"WebSocket error: {ws.exception()}"
