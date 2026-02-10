@@ -417,14 +417,45 @@ class ZuluMoltWorkerAdapter:
 
                         if event_type == "connect.challenge":
                             nonce = hdata.get("payload", {}).get("nonce", "")
+                            ts = hdata.get("payload", {}).get("ts", int(time.time() * 1000))
+                            connect_id = str(uuid.uuid4())
                             await ws.send_json({
-                                "type": "event",
-                                "event": "connect.response",
-                                "payload": {"nonce": nonce},
+                                "type": FRAME_REQ,
+                                "id": connect_id,
+                                "method": "connect",
+                                "params": {
+                                    "minProtocol": 3,
+                                    "maxProtocol": 3,
+                                    "client": {
+                                        "id": "zulu-nightshift",
+                                        "version": "1.0.0",
+                                        "platform": "linux",
+                                        "mode": "api",
+                                    },
+                                    "role": "operator",
+                                    "scopes": ["operator.admin"],
+                                    "caps": [],
+                                    "auth": {"token": self.gateway_token},
+                                    "device": {
+                                        "id": "zulu-adapter",
+                                        "nonce": nonce,
+                                        "signedAt": ts,
+                                    },
+                                },
                             })
-                            log.info(f"Task {request.task_id}: answered connect.challenge")
-                            challenge_completed = True
-                            break
+                            log.info(f"Task {request.task_id}: sent connect request")
+                            # Wait for connect response
+                            continue
+                        elif hdata.get("type") == FRAME_RES:
+                            # Response to our connect request
+                            if hdata.get("ok"):
+                                log.info(f"Task {request.task_id}: connect handshake complete")
+                                challenge_completed = True
+                                break
+                            else:
+                                err = hdata.get("error", "unknown")
+                                log.error(f"Task {request.task_id}: connect rejected: {err}")
+                                break
                         elif event_type == "health":
                             # Gateway health event, skip and keep waiting
                             continue
