@@ -327,7 +327,7 @@ class ZuluMoltWorkerAdapter:
         last_error = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                response = await self._execute_via_websocket(request)
+                response = await self._execute_via_http(request)
 
                 if response.was_rejected:
                     self._audit("task_rejected", request.task_id,
@@ -365,19 +365,18 @@ class ZuluMoltWorkerAdapter:
                     f"Task {request.task_id} timed out after {request.timeout_seconds}s"
                 )
 
-    async def _execute_via_websocket(self, request: OpenClawRequest) -> OpenClawResponse:
+    async def _execute_via_http(self, request: OpenClawRequest) -> OpenClawResponse:
         """
-        Connect to MoltWorker WebSocket, send task as chat message,
-        collect streamed response.
+        Send task to MoltWorker via HTTP POST to /api/task endpoint.
+
+        The /api/task endpoint internally runs `openclaw agent --message`
+        which handles the full Gateway WebSocket protocol (challenge-response,
+        device signing, etc.) — avoiding the need to implement the complex
+        Gateway RPC protocol in Python.
         """
         session = await self._get_session()
         config = get_moltworker_config()
         start_time = time.monotonic()
-
-        # Build WebSocket URL with gateway token
-        ws_scheme = "wss" if self.url.startswith("https") else "ws"
-        base = self.url.replace("https://", "").replace("http://", "")
-        ws_url = f"{ws_scheme}://{base}/?token={self.gateway_token}"
 
         # Build the task prompt with context
         prompt = self._build_prompt(request)
@@ -385,220 +384,86 @@ class ZuluMoltWorkerAdapter:
         # Use a conversation ID scoped to this task
         conversation_id = f"zulu-{request.task_id}"
 
-        collected_content = []
-        steps_taken = 0
-        error_message = None
-        error_code = None
-        status = "completed"
+        # Build HTTP request to /api/task
+        task_url = f"{self.url}/api/task"
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        # Add CF Access service token headers if configured
+        cf_client_id = config.cf_access_client_id
+        cf_client_secret = config.cf_access_client_secret
+        if cf_client_id and cf_client_secret:
+            headers["CF-Access-Client-Id"] = cf_client_id
+            headers["CF-Access-Client-Secret"] = cf_client_secret
+
+        payload = {
+            "message": prompt,
+            "session_id": conversation_id,
+            "timeout": int(request.timeout_seconds * 1000),  # ms for the endpoint
+        }
 
         try:
-            async with session.ws_connect(
-                ws_url,
-                timeout=config.connection_timeout,
-                heartbeat=30,
-            ) as ws:
-                # Wait for connect.challenge from Gateway before sending messages
-                challenge_deadline = time.monotonic() + 30  # 30s to complete handshake
-                challenge_completed = False
+            timeout = aiohttp.ClientTimeout(total=request.timeout_seconds + 30)
+            log.info(f"Task {request.task_id}: POST {task_url}, timeout={request.timeout_seconds}s")
 
-                async for handshake_msg in ws:
-                    if time.monotonic() > challenge_deadline:
-                        log.error(f"Task {request.task_id}: challenge handshake timed out")
-                        break
+            async with session.post(task_url, json=payload, headers=headers, timeout=timeout) as resp:
+                elapsed = time.monotonic() - start_time
+                log.info(f"Task {request.task_id}: HTTP {resp.status} in {elapsed:.1f}s")
 
-                    if handshake_msg.type == aiohttp.WSMsgType.TEXT:
-                        try:
-                            hdata = json.loads(handshake_msg.data)
-                        except json.JSONDecodeError:
-                            continue
+                body = await resp.json()
 
-                        event_type = hdata.get("event") or hdata.get("type", "")
-                        log.info(f"Task {request.task_id}: handshake msg: {event_type}")
-
-                        if event_type == "connect.challenge":
-                            nonce = hdata.get("payload", {}).get("nonce", "")
-                            ts = hdata.get("payload", {}).get("ts", int(time.time() * 1000))
-                            connect_id = str(uuid.uuid4())
-                            await ws.send_json({
-                                "type": FRAME_REQ,
-                                "id": connect_id,
-                                "method": "connect",
-                                "params": {
-                                    "minProtocol": 3,
-                                    "maxProtocol": 3,
-                                    "client": {
-                                        "id": "zulu-nightshift",
-                                        "version": "1.0.0",
-                                        "platform": "linux",
-                                        "mode": "api",
-                                    },
-                                    "role": "operator",
-                                    "scopes": ["operator.admin"],
-                                    "caps": [],
-                                    "auth": {"token": self.gateway_token},
-                                    "device": {
-                                        "id": "zulu-adapter",
-                                        "nonce": nonce,
-                                        "signedAt": ts,
-                                    },
-                                },
-                            })
-                            log.info(f"Task {request.task_id}: sent connect request")
-                            # Wait for connect response
-                            continue
-                        elif hdata.get("type") == FRAME_RES:
-                            # Response to our connect request
-                            if hdata.get("ok"):
-                                log.info(f"Task {request.task_id}: connect handshake complete")
-                                challenge_completed = True
-                                break
-                            else:
-                                err = hdata.get("error", "unknown")
-                                log.error(f"Task {request.task_id}: connect rejected: {err}")
-                                break
-                        elif event_type == "health":
-                            # Gateway health event, skip and keep waiting
-                            continue
-                        else:
-                            # Unknown handshake event, keep waiting
-                            log.debug(f"Task {request.task_id}: ignoring handshake event: {event_type}")
-                            continue
-
-                    elif handshake_msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
-                        log.error(f"Task {request.task_id}: ws closed during handshake")
-                        break
-
-                if not challenge_completed:
+                if resp.status != 200:
+                    error_msg = body.get("error", f"HTTP {resp.status}")
                     return OpenClawResponse(
                         task_id=request.task_id,
                         status="error",
-                        error="Gateway challenge handshake failed",
-                        error_code=ErrorCode.INTERNAL_ERROR.value,
-                        elapsed_seconds=round(time.monotonic() - start_time, 2),
+                        error=error_msg,
+                        error_code=self._categorize_error(error_msg),
+                        elapsed_seconds=round(elapsed, 2),
                     )
 
-                # Send agent request using RPC protocol
-                req_id = str(uuid.uuid4())[:8]
-                await ws.send_json({
-                    "type": FRAME_REQ,
-                    "id": req_id,
-                    "method": "agent",
-                    "params": {
-                        "message": prompt,
-                        "session": conversation_id,
-                    },
-                })
+                api_status = body.get("status", "unknown")
 
-                log.info(f"Task {request.task_id}: sent to MoltWorker via {ws_url[:60]}..., awaiting response...")
+                if api_status == "completed":
+                    result = body.get("result", {})
+                    content = ""
+                    if isinstance(result, dict):
+                        content = result.get("content", "")
+                    elif isinstance(result, str):
+                        content = result
 
-                # Collect response with timeout
-                deadline = time.monotonic() + request.timeout_seconds
-                message_complete = False
+                    return OpenClawResponse(
+                        task_id=request.task_id,
+                        status="completed",
+                        output={"content": content, "backend": "moltworker"},
+                        elapsed_seconds=round(elapsed, 2),
+                        completed_at=datetime.now(timezone.utc).isoformat(),
+                    )
 
-                async for msg in ws:
-                    # Check timeout
-                    if time.monotonic() > deadline:
-                        status = "timeout"
-                        error_message = f"Task exceeded {request.timeout_seconds}s limit"
-                        break
+                elif api_status == "timeout":
+                    return OpenClawResponse(
+                        task_id=request.task_id,
+                        status="timeout",
+                        error=body.get("error", "Agent timed out"),
+                        elapsed_seconds=round(elapsed, 2),
+                    )
 
-                    log.info(f"Task {request.task_id}: ws msg type={msg.type}, data={str(msg.data)[:200]}")
+                else:
+                    error_msg = body.get("error", f"Unknown status: {api_status}")
+                    return OpenClawResponse(
+                        task_id=request.task_id,
+                        status="error",
+                        error=error_msg,
+                        error_code=self._categorize_error(error_msg),
+                        elapsed_seconds=round(elapsed, 2),
+                    )
 
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        try:
-                            data = json.loads(msg.data)
-                        except json.JSONDecodeError:
-                            collected_content.append(msg.data)
-                            continue
-
-                        frame_type = data.get("type", "")
-
-                        if frame_type == FRAME_EVENT:
-                            event_name = data.get("event", "")
-                            payload = data.get("payload", {})
-
-                            if event_name == "agent.text.delta":
-                                delta = payload.get("delta", "") if isinstance(payload, dict) else str(payload)
-                                collected_content.append(delta)
-
-                            elif event_name == "agent.text.done":
-                                # Full text available in payload
-                                text = payload.get("text", "") if isinstance(payload, dict) else str(payload)
-                                if text and not collected_content:
-                                    collected_content.append(text)
-
-                            elif event_name == "agent.turn.done":
-                                message_complete = True
-                                break
-
-                            elif event_name == "agent.tool.start":
-                                steps_taken += 1
-                                tool_name = payload.get("tool", "unknown") if isinstance(payload, dict) else "unknown"
-                                log.debug(f"Task {request.task_id}: tool_use tool={tool_name} step={steps_taken}")
-
-                            elif event_name == "agent.tool.done":
-                                pass  # Tool completed, content may follow
-
-                            elif event_name == "agent.error":
-                                err_msg = payload.get("message", str(payload)) if isinstance(payload, dict) else str(payload)
-                                error_message = err_msg
-                                status = "error"
-                                error_code = self._categorize_error(error_message)
-                                break
-
-                            elif event_name == "health":
-                                continue  # Skip health pings
-
-                            else:
-                                log.debug(f"Task {request.task_id}: unknown event: {event_name}")
-
-                        elif frame_type == FRAME_RES:
-                            # Response to our request
-                            if not data.get("ok", False):
-                                err = data.get("error", {})
-                                error_message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-                                status = "error"
-                                error_code = self._categorize_error(error_message)
-                                log.error(f"Task {request.task_id}: agent request rejected: {error_message}")
-                                break
-                            else:
-                                # Agent request accepted, events will follow
-                                log.info(f"Task {request.task_id}: agent request accepted")
-
-                        else:
-                            log.debug(f"Task {request.task_id}: unknown frame type: {frame_type}")
-
-                    elif msg.type == aiohttp.WSMsgType.ERROR:
-                        error_message = f"WebSocket error: {ws.exception()}"
-                        status = "error"
-                        break
-
-                    elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
-                        log.warning(f"Task {request.task_id}: ws closed, complete={message_complete}, content_len={len(collected_content)}, close_code={getattr(ws, 'close_code', None)}")
-                        if not message_complete and not collected_content:
-                            error_message = "WebSocket closed before response"
-                            status = "error"
-                        break
-
-                elapsed = time.monotonic() - start_time
-                full_content = "".join(collected_content)
-
-                return OpenClawResponse(
-                    task_id=request.task_id,
-                    status=status,
-                    output={"content": full_content, "backend": "moltworker"} if status == "completed" else None,
-                    error=error_message,
-                    error_code=error_code,
-                    steps_taken=steps_taken,
-                    elapsed_seconds=round(elapsed, 2),
-                    completed_at=datetime.now(timezone.utc).isoformat() if status == "completed" else None,
-                )
-
-        except aiohttp.WSServerHandshakeError as e:
-            elapsed = time.monotonic() - start_time
-            log.error(f"Task {request.task_id}: WebSocket handshake failed: {e}")
-            raise
         except asyncio.TimeoutError:
+            raise
+        except aiohttp.ClientError as e:
+            elapsed = time.monotonic() - start_time
+            log.error(f"Task {request.task_id}: HTTP error: {e}")
             raise
         except Exception as e:
             elapsed = time.monotonic() - start_time
@@ -607,7 +472,7 @@ class ZuluMoltWorkerAdapter:
                 task_id=request.task_id,
                 status="error",
                 error=str(e),
-                error_code=ErrorCode.INTERNAL_ERROR.value,
+                error_code=self._categorize_error(str(e)),
                 elapsed_seconds=round(elapsed, 2),
             )
 
