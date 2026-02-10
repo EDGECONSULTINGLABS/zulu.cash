@@ -392,6 +392,55 @@ class ZuluMoltWorkerAdapter:
                 timeout=config.connection_timeout,
                 heartbeat=30,
             ) as ws:
+                # Wait for connect.challenge from Gateway before sending messages
+                challenge_deadline = time.monotonic() + 30  # 30s to complete handshake
+                challenge_completed = False
+
+                async for handshake_msg in ws:
+                    if time.monotonic() > challenge_deadline:
+                        log.error(f"Task {request.task_id}: challenge handshake timed out")
+                        break
+
+                    if handshake_msg.type == aiohttp.WSMsgType.TEXT:
+                        try:
+                            hdata = json.loads(handshake_msg.data)
+                        except json.JSONDecodeError:
+                            continue
+
+                        event_type = hdata.get("event") or hdata.get("type", "")
+                        log.info(f"Task {request.task_id}: handshake msg: {event_type}")
+
+                        if event_type == "connect.challenge":
+                            nonce = hdata.get("payload", {}).get("nonce", "")
+                            await ws.send_json({
+                                "type": "event",
+                                "event": "connect.response",
+                                "payload": {"nonce": nonce},
+                            })
+                            log.info(f"Task {request.task_id}: answered connect.challenge")
+                            challenge_completed = True
+                            break
+                        elif event_type == "health":
+                            # Gateway health event, skip and keep waiting
+                            continue
+                        else:
+                            # Unknown handshake event, keep waiting
+                            log.debug(f"Task {request.task_id}: ignoring handshake event: {event_type}")
+                            continue
+
+                    elif handshake_msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
+                        log.error(f"Task {request.task_id}: ws closed during handshake")
+                        break
+
+                if not challenge_completed:
+                    return OpenClawResponse(
+                        task_id=request.task_id,
+                        status="error",
+                        error="Gateway challenge handshake failed",
+                        error_code=ErrorCode.INTERNAL_ERROR.value,
+                        elapsed_seconds=round(time.monotonic() - start_time, 2),
+                    )
+
                 # Send the task as a chat message
                 await ws.send_json({
                     "type": MSG_TYPE_MESSAGE,
@@ -423,6 +472,13 @@ class ZuluMoltWorkerAdapter:
                             continue
 
                         msg_type = data.get("type", "")
+                        # Handle event wrapper: {"type":"event","event":"..."}
+                        if msg_type == "event":
+                            event_name = data.get("event", "")
+                            if event_name == "health":
+                                continue  # Skip health pings
+                            log.debug(f"Task {request.task_id}: event: {event_name}")
+                            continue
 
                         if msg_type == MSG_TYPE_CONTENT_DELTA:
                             delta = data.get("delta", "")
