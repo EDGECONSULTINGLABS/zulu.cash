@@ -4,13 +4,14 @@ zulu_moltworker_adapter.py
 Adapter for Zulu → MoltWorker (OpenClaw on Cloudflare Workers) communication.
 
 MoltWorker runs the full OpenClaw Gateway on Cloudflare Sandbox containers.
-Communication happens via WebSocket (the Gateway's chat protocol).
+Communication happens via HTTP POST to the /api/task endpoint, which internally
+runs the `openclaw agent` CLI to handle the Gateway's WebSocket protocol.
 
 This adapter:
-1. Connects to MoltWorker's WebSocket endpoint
-2. Authenticates with the gateway token
-3. Translates Zulu OpenClawRequest → WebSocket chat messages
-4. Collects streamed responses into OpenClawResponse
+1. Sends tasks to MoltWorker's /api/task HTTP endpoint
+2. Authenticates via Cloudflare Access service tokens
+3. Translates Zulu OpenClawRequest → HTTP task payload
+4. Parses JSON responses into OpenClawResponse
 5. Maintains the same contract as ZuluOpenClawAdapter
 
 DESIGN:
