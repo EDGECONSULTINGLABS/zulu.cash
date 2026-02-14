@@ -21,6 +21,7 @@ services:
       - CLAWD_LISTEN_PORT=8080
       - CLAWD_MAX_TASK_DURATION=300
       - CLAWD_WORKSPACE=/app/workspace
+      - CLAWD_AUTH_TOKEN=${CLAWD_AUTH_TOKEN:-}
 
   # ---------------------------------------------------------------------------
   # TELEGRAM GATEWAY — Bot Interface
@@ -38,6 +39,12 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - CLAWD_URL=http://127.0.0.1:8080
+      - CLAWD_AUTH_TOKEN=${CLAWD_AUTH_TOKEN:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
       - RATE_LIMIT_PER_MINUTE=10
+      # MoltWorker backend (optional — if set, complex tasks route to Cloudflare)
+      - MOLTWORKER_URL=${MOLTWORKER_URL:-}
+      - MOLTWORKER_GATEWAY_TOKEN=${MOLTWORKER_GATEWAY_TOKEN:-}
+      - CF_ACCESS_CLIENT_ID=${CF_ACCESS_CLIENT_ID:-}
+      - CF_ACCESS_CLIENT_SECRET=${CF_ACCESS_CLIENT_SECRET:-}

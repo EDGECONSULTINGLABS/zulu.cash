@@ -49,6 +49,7 @@ from zulu_openclaw_adapter import ScopedCredentials
 # ---------------------------------------------------------------------------
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CLAWD_URL = os.environ.get("CLAWD_URL", "http://localhost:8080")
+CLAWD_AUTH_TOKEN = os.environ.get("CLAWD_AUTH_TOKEN", "")
 ALLOWED_USERS = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "10"))
 
@@ -238,9 +239,13 @@ async def send_to_clawd(message: str, user_id: int) -> Optional[dict]:
     
     log.info(f"Sending task {task_id} ({payload['task_type']}) to clawd-runner")
     
+    headers = {}
+    if CLAWD_AUTH_TOKEN:
+        headers["Authorization"] = f"Bearer {CLAWD_AUTH_TOKEN}"
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            resp = await client.post(f"{CLAWD_URL}/task", json=payload)
+            resp = await client.post(f"{CLAWD_URL}/task", json=payload, headers=headers)
             result = resp.json()
             log.info(f"Task {task_id} completed: {result.get('status')}")
             return result

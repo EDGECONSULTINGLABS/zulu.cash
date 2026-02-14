@@ -179,6 +179,7 @@ services:
       - CLAWD_MAX_TASK_DURATION=300
       - CLAWD_MAX_MEMORY_MB=1024
       - CLAWD_WORKSPACE=/app/workspace
+      - CLAWD_AUTH_TOKEN=${CLAWD_AUTH_TOKEN:-}
       # Clawd does NOT know about Zulu's secrets directory
       # Clawd does NOT have ZULU_DB_KEY, HF_TOKEN, etc.
 
@@ -310,9 +311,15 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - CLAWD_URL=http://clawd-runner:8080
+      - CLAWD_AUTH_TOKEN=${CLAWD_AUTH_TOKEN:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
       - RATE_LIMIT_PER_MINUTE=10
+      # MoltWorker backend (optional — if set, complex tasks route to Cloudflare)
+      - MOLTWORKER_URL=${MOLTWORKER_URL:-}
+      - MOLTWORKER_GATEWAY_TOKEN=${MOLTWORKER_GATEWAY_TOKEN:-}
+      - CF_ACCESS_CLIENT_ID=${CF_ACCESS_CLIENT_ID:-}
+      - CF_ACCESS_CLIENT_SECRET=${CF_ACCESS_CLIENT_SECRET:-}
 
     networks:
       - shared_bus

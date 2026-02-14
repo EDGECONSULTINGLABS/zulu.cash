@@ -31,6 +31,7 @@ LISTEN_PORT = int(os.getenv("CLAWD_LISTEN_PORT", "8080"))
 MAX_TASK_DURATION = int(os.getenv("CLAWD_MAX_TASK_DURATION", "300"))
 MAX_MEMORY_MB = int(os.getenv("CLAWD_MAX_MEMORY_MB", "1024"))
 WORKSPACE = os.getenv("CLAWD_WORKSPACE", "/app/workspace")
+AUTH_TOKEN = os.getenv("CLAWD_AUTH_TOKEN", "")  # If set, Bearer token required on /task
 
 logging.basicConfig(
     level=logging.INFO,
@@ -215,8 +216,21 @@ def _clean_workspace():
 # ---------------------------------------------------------------------------
 # HTTP server
 # ---------------------------------------------------------------------------
+def _check_auth(request: web.Request) -> bool:
+    """Validate Bearer token if AUTH_TOKEN is configured."""
+    if not AUTH_TOKEN:
+        return True
+    auth = request.headers.get("Authorization", "")
+    return auth == f"Bearer {AUTH_TOKEN}"
+
+
 async def handle_task(request: web.Request) -> web.Response:
     """POST /task — receive and execute a scoped task."""
+    if not _check_auth(request):
+        return web.json_response(
+            {"error": "Unauthorized"}, status=401
+        )
+
     try:
         payload = await request.json()
     except json.JSONDecodeError:
@@ -262,4 +276,5 @@ if __name__ == "__main__":
     log.info(f"Max task duration: {MAX_TASK_DURATION}s")
     log.info(f"Max memory: {MAX_MEMORY_MB}MB")
     log.info(f"Workspace: {WORKSPACE}")
+    log.info(f"Auth: {'ENABLED' if AUTH_TOKEN else 'DISABLED (set CLAWD_AUTH_TOKEN to enable)'}")
     web.run_app(create_app(), host="0.0.0.0", port=LISTEN_PORT)
